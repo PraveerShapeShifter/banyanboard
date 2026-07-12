@@ -7,6 +7,8 @@ import express, {
 import { createHealthRouter, type DbHealthCheck } from './health/health';
 import { createBoardsRouter } from './boards/boards.routes';
 import type { BoardsRepository } from './boards/boards.repository';
+import { createCardsRouter } from './cards/cards.routes';
+import type { CardsRepository } from './cards/cards.repository';
 import { log } from './config/logger';
 
 /**
@@ -19,6 +21,8 @@ export interface AppDeps {
   checkDb: DbHealthCheck;
   /** Data-access layer for the `boards` resource; backs the Board CRUD routes. */
   boardsRepo: BoardsRepository;
+  /** Data-access layer for the `cards` resource; backs the Card CRUD routes. */
+  cardsRepo: CardsRepository;
 }
 
 /**
@@ -35,6 +39,7 @@ export function createApp(deps: AppDeps): Express {
 
   app.use(createHealthRouter(deps.checkDb));
   app.use(createBoardsRouter(deps.boardsRepo));
+  app.use(createCardsRouter(deps.cardsRepo, deps.boardsRepo));
 
   // Central error handler. Turns a malformed JSON body into a 400 and any other
   // unexpected failure (e.g. a database outage surfaced via `next(err)`) into a

@@ -204,7 +204,7 @@ Additional implementation note: add an index on `cards.board_id` (primary filter
   - Add `src/cards/cards.types.ts` — `Card`, `CreateCardInput`, `UpdateCardInput`, `CardStatus` union.
   - Add `src/cards/cards.repository.ts` — `CardsRepository` interface + `PostgresCardsRepository(pool)`: parameterized queries, `RETURNING`-based create/update, `findAll(boardId?)` (optional WHERE), row→domain mapping, `boardExists(id)` helper (or reuse boards repo) for the AC-ERROR-3 existence check.
   - Tests: `src/cards/cards.repository.test.ts` (mocked pool).
-- [ ] **Phase 2: HTTP + validation layer** — validators, routes, wiring, error handling (delivers the complete client-facing flow)
+- [x] **Phase 2: HTTP + validation layer** — validators, routes, wiring, error handling (delivers the complete client-facing flow) ✅ (2026-07-13)
   - Add `src/cards/cards.validation.ts` — hand-rolled create/update validators (no new dependency, simplicity-first), mirroring `boards.validation.ts`: title required/non-blank/≤200, board_id required integer (create only, not patchable), status ∈ enum, description/due_date optional + typed; structured 400 errors.
   - Add `src/cards/cards.routes.ts` — `createCardsRouter(cardsRepo, boardsRepo): Router` exposing the 5 endpoints with exact spec status codes/bodies + the `?board_id=` filter; application-level board_id-existence check → 400 (AC-ERROR-3); fail-safe `next(err)` handling; log mutations via `src/config/logger.ts` `log()` (no `console.log`).
   - Wire into `src/app.ts`: extend `AppDeps` with `cardsRepo: CardsRepository`; `app.use(createCardsRouter(deps.cardsRepo, deps.boardsRepo))`. Central error handler already handles malformed-JSON→400 / →500.
@@ -221,18 +221,18 @@ Additional implementation note: add an index on `cards.board_id` (primary filter
 
 ## Build Execution State
 
-**Build Status**: IDLE (Phase 1 complete; Phase 2 pending)
-**Current Build**: Phase 1: Data layer (TASK-003) — COMPLETE
-**Build Started**: 2026-07-12
-**Phase Number**: 1 of 2
+**Build Status**: COMPLETE (BUILD_COMPLETE — all phases done)
+**Current Build**: Phase 2: HTTP + validation layer (TASK-003) — COMPLETE
+**Build Started**: 2026-07-13
+**Phase Number**: 2 of 2
 **Is Multi-Phase**: YES
 **Branch**: feature/FEAT-003-card-crud (in-repo, Worktree N/A)
 
 ### Current Build Step
-**Step**: Phase 1 COMPLETE — committed. Awaiting human review, then `/banyan-build TASK-003` for Phase 2.
+**Step**: All phases complete — committed. Next: `/banyan-reflect TASK-003`.
 **Status**: COMPLETE
-**Completed**: 2026-07-12
-**Output**: Data layer built. `db/init/002_cards.sql` (cards table, FK ON DELETE CASCADE, status CHECK, board_id index), `src/cards/cards.types.ts`, `src/cards/cards.repository.ts` + 14 unit tests. 62/62 tests pass, tsc strict build passes.
+**Completed**: 2026-07-13
+**Output**: HTTP layer built. cards.validation.ts (+15 tests), cards.routes.ts (5 endpoints + ?board_id filter + AC-ERROR-3 board-existence 400 + fail-safe), wired cardsRepo into AppDeps/createApp/server.ts, extended app.test.ts + health.test.ts stubs, README Cards API + 002_cards.sql notes. 95/95 tests pass, tsc strict PASS. All AC groups (ENTRY-1, HAPPY-1..7 incl. cascade, ERROR-1..4) covered.
 
 ### Completed Steps
 - Step 0: Resolved FEAT-003 → auto-provisioned TASK-003
@@ -243,8 +243,9 @@ Additional implementation note: add an index on `cards.board_id` (primary filter
 - Step 0.5 Git Setup: COMPLETE (2026-07-12) — created feature/FEAT-003-card-crud from main
 - Step 1 Read Task Context: COMPLETE (2026-07-12) — Phase 1 (data layer) identified, Level 3, 2 phases
 - Phase 1 Build: COMPLETE (2026-07-12) — schema + types + repository + 14 tests; 62/62 pass; tsc PASS; committed to feature branch
+- Phase 2 Build: COMPLETE (2026-07-13) — validation + routes + app/server wiring + README; 33 new tests (15 validation + 18 routes); 95/95 pass; tsc PASS; committed to feature branch. Status → BUILD_COMPLETE.
 
 ### Resumption Notes
-**Can Resume**: YES
-**Resume From**: Phase 2 (HTTP + validation layer) — run `/banyan-build TASK-003`
-**Notes**: Phase 1 done & committed. Phase 2 will add cards.validation.ts, cards.routes.ts, wire cardsRepo into AppDeps/createApp (src/app.ts) and PostgresCardsRepository into src/server.ts, extend app.test.ts + health.test.ts stubs, and add the AC-ERROR-3 board_id-existence check via boardsRepo.findById.
+**Can Resume**: NO (BUILD_COMPLETE)
+**Resume From**: N/A — both phases complete. Next workflow step: `/banyan-reflect TASK-003`, then `/banyan-archive TASK-003`.
+**Notes**: All acceptance criteria covered by the test suite. Live `ON DELETE CASCADE` / real-DB FK behavior to be smoke-tested manually via `docker compose up` + curl (per Test Strategy — no live DB in the automated suite).
