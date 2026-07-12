@@ -1,0 +1,26 @@
+# Progress Log
+
+Chronological record of completed phases and tasks. Updated by `/banyan-archive`.
+
+---
+
+- **2026-07-10** — Memory Bank initialized via `/banyan-init` (greenfield).
+- **2026-07-10** — FEAT-001 (Project Foundation) added to roadmap; TASK-001 planned via `/banyan-plan` → PLANNING_COMPLETE (Level 2, 3 build phases).
+- **2026-07-10** — TASK-001 Phase 1/3 complete: TS/Express skeleton, env config, structured logger, project structure, Vitest+Supertest smoke tests (2/2 pass), README. Build + tests green. Committed to `feature/FEAT-001-project-foundation`.
+- **2026-07-10** — TASK-001 Phase 2/3 complete: `GET /health` with PostgreSQL connectivity check (200 `{status:ok,db:connected}` / 503 `{status:degraded,db:disconnected}`, never crashes). `pg` pool isolated in `src/db/pool.ts`; `checkDb` dependency injected into `createApp` for testability. Added 5 health tests (7/7 total pass). Build green. README API docs added. AC-HAPPY-1/2 and AC-ERROR-1 satisfied. Committed to `feature/FEAT-001-project-foundation`.
+- **2026-07-10** — TASK-001 Phase 3/3 complete (final phase): Docker Compose orchestration. Added multi-stage `Dockerfile` (node:20-alpine build → slim non-root runtime), `docker-compose.yml` (api + postgres:16-alpine with healthchecks, named volume, `api depends_on db: service_healthy`, `DATABASE_URL` wired to `db:5432`), and `.dockerignore`. README Docker Quick Start added. `npm run build` PASS, `npm test` 7/7 PASS (no regression), `docker compose config` VALID. Live `docker compose up` deferred to human (Docker daemon unavailable in build env) — per Test Strategy Phase 3 has 0 automated tests, Docker verified manually via AC-ENTRY-1. TASK-001 now BUILD_COMPLETE. Committed to `feature/FEAT-001-project-foundation`. Next: `/banyan-reflect TASK-001`.
+- **2026-07-10** — TASK-001 reflection complete (`/banyan-reflect`). Reflection doc `memory-bank/reflection/reflection-TASK-001.md`. Ratings: Task Quality High, Ecosystem Effectiveness Good. Continuous learning: 4 patterns extracted → 4 new `_learned/` rules created (testing-patterns, error-handling, infrastructure, configuration). Status → REFLECTION_COMPLETE. Open follow-up: human to run `docker compose up --build` + `curl /health` to live-confirm AC-ENTRY-1. Next: `/banyan-archive TASK-001` (optional for Level 2).
+- **2026-07-12** — TASK-002 (Board CRUD API) Phase 1/2 complete: **Data layer**. Added `boards` schema via committed SQL init script `db/init/001_boards.sql` (INTEGER identity PK, `name VARCHAR(120)`, `description TEXT`, `created_at`/`updated_at TIMESTAMPTZ`) mounted into the `db` compose service at `/docker-entrypoint-initdb.d/`. Added `src/boards/boards.repository.ts` — `BoardsRepository` interface (DI, mirrors `DbHealthCheck`) + `PostgresBoardsRepository` over the existing `pg` pool: parameterized queries (injection-safe), `RETURNING`-based create/update, dynamic partial `update` that bumps `updated_at`, hard `delete` reporting `rowCount`. 12 unit tests in `boards.repository.test.ts` (mocked pool). `npm test` 19/19 PASS (12 new + 7 existing, no regression), `npm run build` (tsc) PASS, lint N/A (no lint script). Committed to `feature/FEAT-002-board-crud`. Next: `/banyan-build TASK-002` for Phase 2 (HTTP layer: validation, routes, app/server wiring).
+- **2026-07-12** — TASK-002 (Board CRUD API) Phase 2/2 complete (final phase): **HTTP layer**. Added `src/boards/boards.validation.ts` (hand-rolled create/update validators — name required/non-blank/≤120, description string|null; no external dep) and `src/boards/boards.routes.ts` (`createBoardsRouter(repo)` exposing `POST /boards`, `GET /boards`, `GET /boards/:id`, `PATCH /boards/:id`, `DELETE /boards/:id` with exact spec status codes; each handler try/catch → `next(err)`; board mutations logged via `log()`). Wired `boardsRepo` into `AppDeps`/`createApp` (`src/app.ts`) alongside a central error-handling middleware (malformed JSON → 400, any other failure → generic 500, `res.headersSent` guard, no stack-trace leak) and constructed `PostgresBoardsRepository` in `src/server.ts`. Added 16 route integration tests (`boards.routes.test.ts`, stateful in-memory stub repo — persistence round-trips, not echoes) + 13 validation unit tests (`boards.validation.test.ts`); updated existing `app.test.ts`/`health.test.ts` to inject a stub `boardsRepo`. All 8 AC groups satisfied (AC-ENTRY-1, AC-HAPPY-1..5, AC-ERROR-1..3). `npm test` 48/48 PASS (29 new + 19 existing, no regression), `npm run build` (tsc, strict) PASS, lint N/A. TypeScript code review: Approve (Warning) — applied `res.headersSent` guard + stack logging. TASK-002 now BUILD_COMPLETE. Committed to `feature/FEAT-002-board-crud`. Next: `/banyan-reflect TASK-002`.
+
+---
+
+## Task Archive: TASK-001
+
+**Task**: Project Foundation (FEAT-001)
+**Status**: ✅ ARCHIVED
+**Date**: 2026-07-10
+**Archive**: `memory-bank/archive/archive-TASK-001.md`
+**Disposition**: local-merge → `master` (no remote). All 3 phases complete; build + tests green; systemPatterns.md backfilled. Learned-rule consolidation: no changes (4 files, distinct topics, all fresh). Open follow-up: human live-verify `docker compose up` (AC-ENTRY-1); deferred npm-audit security debt.
+
+---

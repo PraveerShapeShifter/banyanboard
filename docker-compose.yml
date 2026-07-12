@@ -1,0 +1,50 @@
+# Docker Compose orchestration for the BanyanBoard foundation.
+# Brings up the API and a PostgreSQL database wired together over the compose
+# network. All configuration is passed via environment variables (12-factor).
+#
+#   docker compose up --build
+#   curl -i http://localhost:3000/health   ->  200 {"status":"ok","db":"connected"}
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      # Local-dev credentials only. Override for any non-local environment.
+      POSTGRES_USER: ${POSTGRES_USER:-banyan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-banyan}
+      POSTGRES_DB: ${POSTGRES_DB:-banyanboard}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # Schema init scripts. Applied by postgres only on a fresh (empty) data
+      # directory — run `docker compose down -v` to re-provision after changes.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-banyan} -d ${POSTGRES_DB:-banyanboard}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    environment:
+      PORT: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Host "db" resolves to the postgres service on the compose network.
+      DATABASE_URL: postgres://${POSTGRES_USER:-banyan}:${POSTGRES_PASSWORD:-banyan}@db:5432/${POSTGRES_DB:-banyanboard}
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # busybox wget ships in node:20-alpine; a non-2xx /health (503) exits non-zero
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  db-data:

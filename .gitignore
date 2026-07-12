@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local environment
+.env
+
+# Session logs (generated, may contain sensitive info)
+.agent-logs/sessions/
+.agent-logs/claude/
+
+# Build/command logs
+.claude-logs/

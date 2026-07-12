@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+*.log
+.claude-logs
+.agent-logs
+coverage
+memory-bank
+**/*.test.ts
+Dockerfile
+docker-compose.yml
+.dockerignore
+README.md
