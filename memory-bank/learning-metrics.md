@@ -14,15 +14,18 @@
 | Task ID | Date | Learnings Extracted | Rules Amended | Rules Created |
 |---------|------|--------------------:|-------------:|-------------:|
 | TASK-001 | 2026-07-10 | 4 | 0 | 4 |
+| TASK-002 | 2026-07-12 | 4 | 2 | 2 |
 
 ## Rule Effectiveness
 
 | File | Topics | Evidence Count | Priority | Last Updated |
 |------|--------|---------------:|:--------:|:------------:|
-| testing-patterns.md | testing, dependency-injection | 1 | low | 2026-07-10 |
-| error-handling.md | error-handling, observability | 1 | low | 2026-07-10 |
+| testing-patterns.md | testing, dependency-injection | 2 | low | 2026-07-12 |
+| error-handling.md | error-handling, observability | 2 | low | 2026-07-12 |
 | infrastructure.md | infrastructure, docker, verification | 1 | low | 2026-07-10 |
 | configuration.md | configuration, 12-factor | 1 | low | 2026-07-10 |
+| data-access.md | data-access, sql, security | 1 | low | 2026-07-12 |
+| api-design.md | api-design, rest | 1 | low | 2026-07-12 |
 
 ## Consolidation History
 

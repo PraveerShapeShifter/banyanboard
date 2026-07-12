@@ -1,7 +1,8 @@
 # TASK-002: Board CRUD API
 
 **Complexity**: Level 3 (inherited from FEAT-002)
-**Status**: BUILD_COMPLETE
+**Status**: REFLECTION_COMPLETE
+**Reflection**: memory-bank/reflection/reflection-TASK-002.md
 **Roadmap**: FEAT-002
 **Branch**: feature/FEAT-002-board-crud
 **Worktree**: N/A
@@ -189,15 +190,17 @@ The two questions the Spec Writer flagged were resolved inline (human-approved),
 
 ## Build Execution State
 
-**Build Status**: BUILD_COMPLETE (all phases)
+**Build Status**: IDLE
+**Current Phase**: REFLECT → ARCHIVE
 **Current Build**: Phase 2: HTTP layer (TASK-002)
 **Phase Number**: 2 of 2
 **Is Multi-Phase**: YES
 **Branch**: feature/FEAT-002-board-crud (local-merge strategy, no worktree)
 
 ### Current Build Step
-**Step**: Phase 2 COMPLETE — all phases done. Next: `/banyan-reflect TASK-002`
+**Step**: REFLECTION_COMPLETE — reflection doc + learned rules written. Next: `/banyan-archive TASK-002`
 **Status**: COMPLETE (2026-07-12)
+**Can Resume**: NO
 
 ### Completed Steps (Phase 1)
 - Step 0.5 Git Setup: COMPLETE — created/switched to feature/FEAT-002-board-crud
