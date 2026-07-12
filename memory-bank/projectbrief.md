@@ -30,7 +30,7 @@ simplicity over clever abstractions.
 - **Provider**: None (no remote configured)
 - **CLI Available**: gh
 - **Remote URL**: none
-- **Default Branch**: master
+- **Default Branch**: main
 - **Archive Strategy**: local-merge
 
 ## Security Debt (Deferred)

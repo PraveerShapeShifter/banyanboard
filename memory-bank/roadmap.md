@@ -16,7 +16,7 @@
 - **Features**:
   - FEAT-001: Project Foundation (complete) [Level 2]
   - FEAT-002: Board CRUD API (planned) [Level 3]
-  - FEAT-003: Card CRUD API (in_progress) [Level 3]
+  - FEAT-003: Card CRUD API (complete) [Level 3]
   - FEAT-004: React Frontend (planned) [Level 3]
 
 ## Features
@@ -53,14 +53,15 @@
 ### FEAT-003: Card CRUD API
 
 - **Version**: next
-- **Status**: in_progress
+- **Status**: complete
 - **Priority**: high
 - **Complexity**: Level 3
 - **Description**: Add the Card domain model with full CRUD REST endpoints, a foreign key to Board (`board_id` → `boards.id`), and input validation. Includes the cards table/schema with the FK constraint and delete behavior (cascade/restrict — to be decided in creative), repository layer, validation, and comprehensive tests.
 - **Dependencies**: FEAT-002 (Board CRUD API — Card FK references boards.id); FEAT-001 (foundation). Board CRUD code is present in the codebase (`src/boards/`, `db/init/001_boards.sql`), so the dependency is satisfied in practice.
-- **Linked Tasks**: TASK-003 (planning)
-- **Branch**: feature/FEAT-003-card-crud
+- **Linked Tasks**: TASK-003 (complete)
+- **Branch**: feature/FEAT-003-card-crud (merged to main)
 - **Created**: 2026-07-10
+- **Completed**: 2026-07-13 — Card CRUD API delivered (`ON DELETE CASCADE` FK, `?board_id=` filter, status enum, app-level FK check); 95/95 tests. Archive: `memory-bank/archive/archive-TASK-003.md`
 
 ### FEAT-004: React Frontend
 

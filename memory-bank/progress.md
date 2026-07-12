@@ -22,6 +22,16 @@ Chronological record of completed phases and tasks. Updated by `/banyan-archive`
 
 ---
 
+## Task Archive: TASK-003
+
+**Task**: Card CRUD API (FEAT-003)
+**Status**: ✅ ARCHIVED
+**Date**: 2026-07-13
+**Archive**: `memory-bank/archive/archive-TASK-003.md`
+**Disposition**: local-merge → `main` (the active development line; projectbrief's stale `Default Branch: master` corrected to `main` during archive — `master` is an unrelated parallel history with no boards code). All 2 phases complete; 95/95 tests; tsc strict PASS. Learned-rule consolidation: 6 files unchanged (distinct topics), `testing-patterns` promoted low→medium. Open follow-ups: human live-DB smoke test (real `ON DELETE CASCADE`/FK/index); extract shared validation-primitives helper before a 3rd CRUD resource; auth/RBAC deferred.
+
+---
+
 ## Task Archive: TASK-001
 
 **Task**: Project Foundation (FEAT-001)

@@ -1,11 +1,13 @@
 # TASK-003: Card CRUD API
 
 **Complexity**: Level 3 (inherited from FEAT-003)
-**Status**: REFLECTION_COMPLETE
+**Status**: COMPLETE
 **Roadmap**: FEAT-003
-**Branch**: feature/FEAT-003-card-crud
+**Branch**: feature/FEAT-003-card-crud (merged into main)
 **Worktree**: N/A
 **Reflection**: memory-bank/reflection/reflection-TASK-003.md
+**Archived**: memory-bank/archive/archive-TASK-003.md
+**Completed**: 2026-07-13
 
 ## Task Description
 
@@ -222,9 +224,10 @@ Additional implementation note: add an index on `cards.board_id` (primary filter
 
 ## Build Execution State
 
-**Build Status**: IDLE (REFLECTION_COMPLETE)
-**Current Phase**: REFLECT → ARCHIVE
-**Current Build**: Phase 2: HTTP + validation layer (TASK-003) — COMPLETE; reflection complete
+**Build Status**: IDLE
+**Current Phase**: COMPLETE
+**Can Resume**: NO
+**Current Build**: Phase 2: HTTP + validation layer (TASK-003) — COMPLETE; reflection complete; archived & merged to main
 **Build Started**: 2026-07-13
 **Phase Number**: 2 of 2
 **Is Multi-Phase**: YES

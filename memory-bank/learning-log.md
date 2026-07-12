@@ -39,3 +39,13 @@ Chronological record of pattern extraction and consolidation events from task re
 
 ### systemPatterns.md Updates
 - None (learnings are coding/API/testing practices, not novel architecture patterns)
+
+---
+
+## 2026-07-13 - Consolidation (during TASK-003 archive)
+
+- Files before: 6, Files after: 6
+- Merged: 0 files (six topics remain distinct — no >50% overlap)
+- Expired: 0 bullets (all evidence within 90 days)
+- Promoted: 1 file (`testing-patterns.md` low → medium at evidence_count 3; applied during reflection)
+- Pruned: 0 excess bullets (all files ≤3 bullets)

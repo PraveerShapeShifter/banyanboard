@@ -33,3 +33,4 @@
 | Date | Rules Before | Rules After | Merged | Expired | Promoted |
 |------|------------:|------------:|-------:|--------:|---------:|
 | 2026-07-10 (TASK-001 archive) | 4 | 4 | 0 | 0 | 0 |
+| 2026-07-13 (TASK-003 archive) | 6 | 6 | 0 | 0 | 1 |
