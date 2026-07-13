@@ -1,16 +1,8 @@
-/**
- * Phase 1 app shell. Client-side routing and the board list / board view pages
- * arrive in Phases 2 and 3 (see memory-bank/tasks/TASK-004.md Implementation
- * Roadmap). This placeholder confirms the scaffold builds, boots, and mounts.
- */
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { routes } from './routes';
+
+const router = createBrowserRouter(routes);
+
 export default function App() {
-  return (
-    <main>
-      <h1>BanyanBoard</h1>
-      <p>
-        Frontend scaffold ready. The board list and board view arrive in the next
-        build phases.
-      </p>
-    </main>
-  );
+  return <RouterProvider router={router} />;
 }

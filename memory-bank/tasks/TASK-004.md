@@ -183,7 +183,7 @@ Read-only React SPA consuming the existing (complete) Board + Card REST API. Thr
   - Document the start command (README + `techContext.md`).
   - **Delivers**: AC-HAPPY-1. **Files**: new frontend dir (`package.json`, bundler config, `tsconfig`, `src/api/apiClient.ts`, env example), possibly `src/app.ts` (backend CORS), `techContext.md`.
 
-- [ ] **Phase 2 — Board list page (`/`).**
+- [x] **Phase 2 — Board list page (`/`).** ✅ BUILD COMPLETE (2026-07-13)
   - Set up client-side routing (`/` and `/boards/:id`) per the router chosen in creative.
   - Board list page: fetch `GET /boards`, render each board (name, optional description) as a clickable item that navigates to `/boards/:id`.
   - Handle loading (indicator), empty (`[]` → explicit "no boards" state), and error (fetch failure → message + retry) states.
@@ -222,18 +222,26 @@ Level 3 with LOW-confidence design questions → creative exploration REQUIRED b
 
 ## Execution State
 
-**Build Status**: PHASE_COMPLETE (Phase 1 of 3) — awaiting human review before Phase 2
-**Current Build**: Phase 1: Frontend scaffold, tooling & API client (TASK-004)
-**Phase Number**: 1 of 3
+**Build Status**: PHASE_COMPLETE (Phase 2 of 3) — awaiting human review before Phase 3
+**Current Build**: Phase 2: Board list page (TASK-004)
+**Phase Number**: 2 of 3
 **Is Multi-Phase**: YES
 **Current Phase**: BUILD
-**Current Step**: Phase 1 complete — committed
-**Last Completed**: Step 11 Git Completion (Phase 1)
-**Can Resume**: NO (phase boundary — next: `/banyan-build TASK-004` for Phase 2)
+**Current Step**: Phase 2 complete — committed
+**Last Completed**: Step 11 Git Completion (Phase 2)
+**Can Resume**: NO (phase boundary — next: `/banyan-build TASK-004` for Phase 3)
 
 ### Current Build Step
-**Step**: Step 11 — Git Completion (Phase 1)
+**Step**: Step 11 — Git Completion (Phase 2)
 **Status**: COMPLETE
+
+### Completed Steps (Phase 2 build)
+- Installed `react-router-dom` ^6.30.4 (0 vulns)
+- Step 3 Test Writer: 6 tests in `BoardListPage.test.tsx` (landing+all-boards AC-ENTRY-1/HAPPY-2, click-nav AC-HAPPY-3, empty AC-HAPPY-5, error+retry AC-ERROR-1, loading AC-ASYNC-1, catch-all 404)
+- Step 4 Coding Agent: `routes.tsx` (shared table: `/`, `/boards/:id`, `*`), `App.tsx` → RouterProvider(createBrowserRouter), `hooks/useApiResource.ts` (ApiResult→loading/success/error state machine + reload), shared `components/{Loading,ErrorState,EmptyState,NotFoundState}.tsx`, `pages/BoardListPage/{BoardListPage,BoardList,BoardListItem}.tsx`, `pages/BoardViewPage/BoardViewPage.tsx` (Phase 3 placeholder), index.css list/state styles
+- Step 6-7 Verification: 14/14 tests PASS (8 client + 6 list); `tsc --noEmit` clean; `vite build` PASS (68.9 kB gzip); 0 vulns. Fixed jsdom data-router AbortSignal issue by driving tests through declarative MemoryRouter+Routes over the same shared `routes` array
+- Step 8 Code Review: orchestrator self-review (mirrors Phase-1 reviewed patterns; single fetch seam preserved, a11y semantics, focus-visible retained) — no sub-agent this phase per cost signal
+- Step 9-10 Docs/Memory: this file + tasks.md + progress.md
 
 ### Completed Steps (Phase 1 build)
 - Step 0.1 Resumption check: NEW build (was IDLE)
