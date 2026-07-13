@@ -190,7 +190,7 @@ Read-only React SPA consuming the existing (complete) Board + Card REST API. Thr
   - Apply the visual/UX layout + accessibility treatment from the UI/UX creative (roles, accessible names, visible focus, not color-only).
   - **Delivers**: AC-ENTRY-1, AC-HAPPY-2, AC-HAPPY-3, AC-HAPPY-5, AC-ERROR-1, AC-ASYNC-1 (list). **Files**: routing setup, `BoardListPage.tsx` + test, shared list/empty/error/loading components.
 
-- [ ] **Phase 3 — Board view page (`/boards/:id`) + column grouping (completes the journey).**
+- [x] **Phase 3 — Board view page (`/boards/:id`) + column grouping (completes the journey).** ✅ BUILD COMPLETE (2026-07-13)
   - Board view: fetch `GET /boards/:id` (header) and `GET /cards?board_id=:id` (cards); partition cards into three fixed columns by `status` (`todo`→To Do, `in_progress`→In Progress, `done`→Done), each card rendering `title` (+ optional `description`/`due_date`).
   - Always render all three columns; a column with no matching cards shows its header + explicit "no cards" indicator (AC-HAPPY-6).
   - Handle loading, board/cards fetch error (message + retry), and a distinct 404 "board not found" state with a way back to the list.
@@ -222,18 +222,28 @@ Level 3 with LOW-confidence design questions → creative exploration REQUIRED b
 
 ## Execution State
 
-**Build Status**: PHASE_COMPLETE (Phase 2 of 3) — awaiting human review before Phase 3
-**Current Build**: Phase 2: Board list page (TASK-004)
-**Phase Number**: 2 of 3
+**Build Status**: BUILD_COMPLETE (all 3 phases done) — next: `/banyan-reflect TASK-004`
+**Current Build**: Phase 3: Board view + column grouping (TASK-004)
+**Phase Number**: 3 of 3
 **Is Multi-Phase**: YES
-**Current Phase**: BUILD
-**Current Step**: Phase 2 complete — committed
-**Last Completed**: Step 11 Git Completion (Phase 2)
-**Can Resume**: NO (phase boundary — next: `/banyan-build TASK-004` for Phase 3)
+**Current Phase**: BUILD → REFLECT
+**Current Step**: All phases complete — committed
+**Last Completed**: Step 11 Git Completion (Phase 3)
+**Can Resume**: NO (build complete)
 
 ### Current Build Step
-**Step**: Step 11 — Git Completion (Phase 2)
+**Step**: Step 11 — Git Completion (Phase 3, final)
 **Status**: COMPLETE
+
+### Completed Steps (Phase 3 build)
+- Step 3 Test Writer: 6 tests in `BoardViewPage.test.tsx` (status grouping AC-HAPPY-4, empty column AC-HAPPY-6, error+retry AC-ERROR-2, distinct 404 AC-ERROR-3, loading AC-ASYNC-1, list→click→columns journey)
+- Step 4 Coding Agent: `groupCardsByStatus.ts` (pure, seeds all 3 keys), `BoardHeader`/`Columns`/`Column`(`<section aria-labelledby>` + `<h2>` label+count)/`Card` (Due: text label); `BoardViewPage.tsx` — parallel `getBoard`+`getCards` via `getBoardView`, one state machine (loading→404 notFound→error+retry→success); index.css 3-col grid + <640px stacked reflow
+- Updated Phase-2 nav test (BoardViewPage is now real, not a placeholder — mock board fetch + assert board name h1 + To Do region)
+- Step 6-7 Verification: 20/20 tests PASS (8 client + 6 list + 6 view); `tsc --noEmit` clean; `vite build` PASS (69.5 kB gzip); 0 vulns
+- Step 8 Code Review: orchestrator self-review (single fetch seam preserved via getBoardView composition; pure grouping; distinct 404; non-color status; WCAG-AA semantics)
+- Step 9-10 Docs/Memory: this file + tasks.md + progress.md
+
+**All 11 ACs delivered** across the 3 phases: AC-ENTRY-1, AC-HAPPY-1/2/3/4/5/6, AC-ERROR-1/2/3, AC-ASYNC-1.
 
 ### Completed Steps (Phase 2 build)
 - Installed `react-router-dom` ^6.30.4 (0 vulns)

@@ -69,15 +69,19 @@ describe('BoardListPage', () => {
 
   it('navigates to the board view when a board is activated (AC-HAPPY-3)', async () => {
     vi.mocked(client.getBoards).mockResolvedValue({ ok: true, data: boards });
+    vi.mocked(client.getBoard).mockResolvedValue({ ok: true, data: boards[0] });
+    vi.mocked(client.getCards).mockResolvedValue({ ok: true, data: [] });
 
     renderAppAt('/');
 
     const link = await screen.findByRole('link', { name: /Marketing Launch/ });
     await userEvent.click(link);
 
+    // Landed on the board view: its `<h1>` (board name) and columns render.
     expect(
-      await screen.findByRole('heading', { name: /Board 1/ }),
+      await screen.findByRole('heading', { name: 'Marketing Launch', level: 1 }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /To Do/ })).toBeInTheDocument();
   });
 
   it('shows an explicit empty state when there are no boards (AC-HAPPY-5)', async () => {

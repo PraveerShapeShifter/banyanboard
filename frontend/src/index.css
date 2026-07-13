@@ -106,3 +106,76 @@ a {
 .empty-state {
   color: #5a5a5a;
 }
+
+/* Board view (UI/UX B1 — CSS Grid, stacked reflow on mobile). */
+main.board-view {
+  max-width: 1100px;
+}
+
+.board-header {
+  margin-bottom: 1rem;
+}
+
+.board-header h1 {
+  margin: 0.25rem 0 0;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Below ~640px the three columns stack vertically in DOM order (To Do →
+   In Progress → Done); reading order = tab order, no gesture/tab JS. */
+@media (max-width: 640px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.column {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 0.75rem;
+  background-color: #fafafa;
+}
+
+.column__header {
+  font-size: 1rem;
+  margin: 0 0 0.6rem;
+}
+
+.column__cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.card {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.6rem 0.7rem;
+  background-color: #ffffff;
+}
+
+.card__title {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.card__description {
+  margin: 0.35rem 0 0;
+  color: #5a5a5a;
+  font-size: 0.9rem;
+}
+
+.card__due {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: #3a3a3a;
+}
