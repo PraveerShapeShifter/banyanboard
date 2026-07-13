@@ -175,7 +175,7 @@ Yes — the following design questions are open and should go through `/banyan-c
 
 Read-only React SPA consuming the existing (complete) Board + Card REST API. Three phases, each independently testable; the final phase completes the full entry→success journey (board list → open a board → see status columns). Concrete tech choices (bundler, router, API-client pattern, CORS-vs-proxy, layout, folder/test conventions) are resolved in the Creative phases below **before** Phase 1 build.
 
-- [ ] **Phase 1 — Frontend scaffold, tooling & API client (foundation).**
+- [x] **Phase 1 — Frontend scaffold, tooling & API client (foundation).** ✅ BUILD COMPLETE (2026-07-13)
   - Scaffold the frontend project at the path chosen in creative (update `techContext.md` Component Structure + Development Commands from `[TBD]`).
   - Establish bundler/dev-server, TypeScript config, and the component-test framework (per Architecture creative).
   - Build a typed API client whose base URL is read from an environment variable (12-factor — no hardcoded host/port), exposing `getBoards()`, `getBoard(id)`, `getCards(boardId)` typed against the verified `Board`/`Card` contract (shared types recommended per `techContext.md` Shared/Common Code).
@@ -222,16 +222,34 @@ Level 3 with LOW-confidence design questions → creative exploration REQUIRED b
 
 ## Execution State
 
-**Build Status**: IDLE
-**Current Phase**: CREATIVE → BUILD
-**Current Step**: Creative complete — ready for /banyan-build
-**Last Completed**: Creative phases (Architecture + UI/UX)
-**Can Resume**: NO
+**Build Status**: PHASE_COMPLETE (Phase 1 of 3) — awaiting human review before Phase 2
+**Current Build**: Phase 1: Frontend scaffold, tooling & API client (TASK-004)
+**Phase Number**: 1 of 3
+**Is Multi-Phase**: YES
+**Current Phase**: BUILD
+**Current Step**: Phase 1 complete — committed
+**Last Completed**: Step 11 Git Completion (Phase 1)
+**Can Resume**: NO (phase boundary — next: `/banyan-build TASK-004` for Phase 2)
 
-### Active Sub-Agents
-(none)
+### Current Build Step
+**Step**: Step 11 — Git Completion (Phase 1)
+**Status**: COMPLETE
 
-### Completed Steps
+### Completed Steps (Phase 1 build)
+- Step 0.1 Resumption check: NEW build (was IDLE)
+- Step 0.1 Agent rules: generated `memory-bank/agent-rules-index.md` (6 learned files, all backend-scoped; transferable = DI/stub testing + 12-factor env)
+- Step 0.5 Git Setup: created + switched to `feature/FEAT-004-react-frontend`; committed plan+creative baseline (ec25052)
+- Step 0.6 Phase Gate: PASS (FEAT-004 linked, roadmap populated, Architecture + UI/UX creative COMPLETE)
+- Step 1 Read Task Context: Phase 1 of 3 identified (multi-phase)
+- Step 2 Load Context: Level 3 implementation rules
+- Step 3 Test Writer: 8 tests in `src/api/client.test.ts` (base-URL-from-env ×2, request shaping ×2, result normalization ×4)
+- Step 4 Coding Agent: scaffolded `frontend/` (Vite+React+TS), `api/types.ts`, `api/client.ts` (single fetch seam, discriminated ApiResult), app shell, vite proxy, Vitest+RTL setup
+- Step 6-7 Verification: 8/8 tests PASS; `tsc --noEmit` clean; `vite build` PASS (46 kB gzip); dev server boots (VITE ready 312ms @ :5173); `npm audit` 0 vulns
+- Step 8 Code Review: ecc:typescript-reviewer → APPROVE; applied 2 non-blocking fixes (encodeURIComponent on id/boardId; comment on intentional unchecked JSON cast)
+- Step 9 Documentation: techContext.md Component Structure + Development Commands + Tooling filled (removed frontend [TBD]s); frontend/README.md
+- Step 10 Memory Bank: this file + tasks.md + progress.md updated
+
+### Prior Completed Steps
 - Step 0.1: Auto-provisioned TASK-004 for FEAT-004 (Level 3), registered + linked
 - Step 3: Spec Writer Agent — drafted `## Specification` (End-User Feature, 11 ACs: 1 ENTRY / 6 HAPPY / 3 ERROR / 1 ASYNC); human approved as-is; taxonomy PASS WITH WARNINGS (1× T-006 soft warning on the non-canonical `### Exact API Contract` sub-header)
 - Step 5: Implementation plan — 3 phases (scaffold+API client / board list / board view+columns), Test Strategy (~15 component tests, Vitest+RTL), Observability N/A, no new REST endpoints, dependencies+risks documented
