@@ -54,6 +54,10 @@ wired via DATABASE_URL over the compose network; api starts only after db is hea
 - **Pattern**: capture card-status transitions on the existing write path into a `card_activity` table + an injected in-process `ActivityEmitter`, transport-agnostic (SSE transport is Phase 2). Persist-first, emit-second, gated on a real transition, fail-safe.
 - **Source**: `memory-bank/creative/TASK-005-realtime-activity-feed-architecture.md`
 
+### 2026-07-15 — SSE push transport with backfill/replay (TASK-005 Phase 2)
+- **Pattern**: `GET /activity/stream?board_id=` streams `text/event-stream`. Per connection: **subscribe to the emitter BEFORE the backfill DB read** (buffer live events during the read, flush deduped by `id` cursor — no gap, no duplicate); `Last-Event-ID` header → `findAfter` replay, else `findRecentByBoard` backfill; heartbeat interval; teardown on `req` close registered **before** the async read with an idempotent `closed` flag that guards every write (a timer/live event can never write to a destroyed socket). Malformed cursor/`board_id` validated (never `NaN` into a query or dedupe comparison). The `activityStreamHandler` is exported separately from the router so its streaming lifecycle is unit-testable with mock req/res (no hung socket).
+- **Source**: `memory-bank/creative/TASK-005-realtime-activity-feed-architecture.md`
+
 ## Testing Patterns
 
 ### Test Organization

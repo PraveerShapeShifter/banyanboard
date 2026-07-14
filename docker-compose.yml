@@ -33,6 +33,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # Host "db" resolves to the postgres service on the compose network.
       DATABASE_URL: postgres://${POSTGRES_USER:-banyan}:${POSTGRES_PASSWORD:-banyan}@db:5432/${POSTGRES_DB:-banyanboard}
+      # TASK-005 Phase 2: SSE activity stream knobs (backfill/replay bound, heartbeat cadence).
+      ACTIVITY_BACKFILL_LIMIT: ${ACTIVITY_BACKFILL_LIMIT:-50}
+      ACTIVITY_HEARTBEAT_MS: ${ACTIVITY_HEARTBEAT_MS:-15000}
     ports:
       - "3000:3000"
     depends_on:

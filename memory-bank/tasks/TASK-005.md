@@ -209,7 +209,7 @@ Four stages: three build phases (each independently testable; Phase 3 completes 
   - Wire status-transition detection into `PATCH /cards/:id` (`src/cards/cards.routes.ts`) per creative Q2 (old-vs-new via fetch-before-update or `RETURNING` old): on a real transition, persist one event and emit to an injected in-process `ActivityEmitter` (added to `AppDeps` in `src/app.ts`, constructed in `src/server.ts`); no-op/non-status PATCH emits/persists nothing; emission off the response path.
   - Structured logs on capture. **Delivers**: AC-VERIFY-1, AC-VERIFY-2, persistence half of AC-INTEGRATION-1. **Depends on**: Architecture creative (event model + capture mechanism).
 
-- [ ] **Phase 2 — Realtime push transport + backfill/replay (backend).**
+- [x] **Phase 2 — Realtime push transport + backfill/replay (backend).** ✅ BUILD COMPLETE (2026-07-15)
   - New `/api`-reachable transport endpoint (SSE or WS per creative Q1); if WS, add the `http.Server` upgrade seam to `src/server.ts` and `ws:true` to the Vite proxy.
   - Per-board subscription + in-process fan-out from the `ActivityEmitter`; bounded backfill on connect from the activity repo; reconnection/replay via `Last-Event-ID`/cursor; heartbeat/keepalive; connection cleanup; 12-factor knobs (path, backfill size, heartbeat) via env.
   - Structured logs on connection lifecycle. **Delivers**: server side of AC-HAPPY-1, AC-ASYNC-1, AC-ASYNC-2, AC-VERIFY-3, AC-ERROR-1 (server). **Depends on**: Architecture creative (transport + fan-out/lifecycle).
@@ -239,14 +239,24 @@ Level 4 → creative exploration REQUIRED before build. Two phases (mirroring FE
 
 ## Execution State
 
-**Build Status**: IDLE (Phase 1 complete — human review gate)
-**Current Build**: Phase 1: Activity model + event capture (TASK-005)
-**Phase Number**: 1 of 4 (3 build phases + post-UAT E2E)
+**Build Status**: IDLE (Phase 2 complete — human review gate)
+**Current Build**: Phase 2: Realtime push transport + backfill/replay (TASK-005)
+**Phase Number**: 2 of 4 (3 build phases + post-UAT E2E)
 **Is Multi-Phase**: YES
-**Current Phase**: BUILD (Phase 1 done) → next: `/banyan-build TASK-005` (Phase 2)
-**Current Step**: Step 11 - Git Completion (Phase 1) - COMPLETE
-**Latest Commit**: (Phase 1 commit — see below)
+**Current Phase**: BUILD (Phase 2 done) → next: `/banyan-build TASK-005` (Phase 3)
+**Current Step**: Step 11 - Git Completion (Phase 2) - COMPLETE
+**Latest Commit**: (Phase 2 commit — see below)
 **Can Resume**: NO
+
+### Completed Steps (Phase 2 build)
+- Step 3 Test Writer: 10 tests RED — `activity.routes.test.ts` (9) + `app.test.ts` (+1 mount smoke). Contract: `activityStreamHandler(repo,emitter,config)` exported separately + `createActivityRouter(...)` mounting `GET /activity/stream`; env knobs `ACTIVITY_BACKFILL_LIMIT`(50)/`ACTIVITY_HEARTBEAT_MS`(15000)
+- Step 4 Coding Agent: `src/activity/activity.routes.ts` (SSE handler — validate board_id→400, SSE headers+flushHeaders, subscribe-before-backfill with buffer+dedupe-by-id seam, Last-Event-ID→findAfter replay / else findRecentByBoard backfill, one frame per event oldest→newest, heartbeat, req.on('close') cleanup, fail-safe catch); `env.ts` + `app.ts` + `server.ts` + `docker-compose.yml` wiring for the two env knobs
+- Step 6-7 Verification (initial): 115/115 tests PASS; `tsc` build clean
+- Step 8 Code Review (build-code-reviewer-agent): **BLOCK → resolved**. Found 2 real blocking bugs the tests missed: (1) `req.on('close')` registered after the backfill await → disconnect-mid-read leaked subscription+heartbeat and risked a write-after-close crash; (2) malformed `Last-Event-ID` → `NaN` cursor silently dropped buffered live events. **Both fixed**: cleanup now registered before the await with an idempotent `closed` flag guarding all writes + a no-heartbeat-if-closed guard; `parseCursor()` validates the header, falling back to full backfill on malformed input. Added 3 regression tests (disconnect-during-backfill cleanup, malformed-cursor fallback + buffered-event survival, fail-safe catch degrades to live-only)
+- Step 6-7 Verification (post-fix): 118/118 tests PASS (was 95 → +10 Phase-1 incl. fail-safe → +13 Phase-2 incl. 3 regression); `tsc` build clean; lint N/A
+- Step 9-10 Docs/Memory: this file + systemPatterns.md + techContext.md + tasks.md + progress.md
+
+**Delivers (server side)**: AC-HAPPY-1 (live event → frame), AC-ASYNC-1 (backfill on connect), AC-ASYNC-2 (Last-Event-ID replay + no-gap buffering, robust to malformed cursor), AC-ERROR-1 (400 validation + fail-safe read + leak-free teardown), AC-VERIFY-3 (emission off the PATCH path). Frontend consumption is Phase 3.
 
 ### Completed Steps (Phase 1 build)
 - Step 0.5 Git Setup: feature/FEAT-005-realtime-activity-feed created; plan+creative baseline committed (12d4f3d)
