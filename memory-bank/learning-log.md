@@ -42,6 +42,22 @@ Chronological record of pattern extraction and consolidation events from task re
 
 ---
 
+## 2026-07-14 - TASK-004 Reflection
+
+### Extracted Patterns
+- **frontend-patterns** → created `agent-rules/_learned/frontend-patterns.md` (evidence count: 1) — single `fetch` client with discriminated result + page async state as one status union (first frontend topic)
+- **testing-patterns** → amended `agent-rules/_learned/testing-patterns.md` (evidence count: 4) — query React components by ARIA role/accessible name (a11y-assertive, refactor-resilient); widened globs to `**/*.test.tsx`
+- **configuration** → amended `agent-rules/_learned/configuration.md` (evidence count: 2) — keep test runner + host bundler on same major (Vitest/Vite), verify with `npm ls`; widened scope to frontend build tooling
+- **error-handling** → amended `agent-rules/_learned/error-handling.md` (evidence count: 3) — branch on specific 404 before generic error state in async UI; widened globs to frontend pages. **Promoted low → medium** (crossed threshold 3).
+
+### systemPatterns.md Updates
+- None (learnings are coding/testing/config practices, not novel architecture patterns)
+
+### Files
+- Before: 6, After: 7 (frontend-patterns.md created; still under cap 10)
+
+---
+
 ## 2026-07-13 - Consolidation (during TASK-003 archive)
 
 - Files before: 6, Files after: 6
