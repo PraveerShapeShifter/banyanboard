@@ -36,6 +36,16 @@ Chronological record of completed phases and tasks. Updated by `/banyan-archive`
 
 ---
 
+## Task Archive: TASK-004
+
+**Task**: React Frontend (FEAT-004)
+**Status**: ✅ ARCHIVED
+**Date**: 2026-07-14
+**Archive**: `memory-bank/archive/archive-TASK-004.md`
+**Disposition**: local-merge → `main` (Archive Strategy per projectbrief.md). All 3 phases complete; all 11 ACs; 20/20 Vitest+RTL tests; `tsc --noEmit` clean; `vite build` PASS (69.5 kB gzip); 0 vulns. First frontend task — stood up `frontend/` (Vite+React+TS) with zero backend changes (dev-proxy for CORS). Learned-rule consolidation: 7 files (no merges/expiry/pruning); `frontend-patterns` created + `testing-patterns`/`configuration`/`error-handling` amended during reflection (`error-handling` promoted low→medium). Open follow-ups: **`/banyan-uat TASK-004`** (a11y browser walk — first UI, WCAG 2.1 AA claims unverified in a real browser) and human live `npm run dev` against the running API. Note: projectbrief still records `Provider: None` though an `origin` remote now exists; strategy remains local-merge (main not pushed).
+
+---
+
 ## Task Archive: TASK-003
 
 **Task**: Card CRUD API (FEAT-003)

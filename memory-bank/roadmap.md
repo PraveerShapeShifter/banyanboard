@@ -17,7 +17,7 @@
   - FEAT-001: Project Foundation (complete) [Level 2]
   - FEAT-002: Board CRUD API (planned) [Level 3]
   - FEAT-003: Card CRUD API (complete) [Level 3]
-  - FEAT-004: React Frontend (planned) [Level 3]
+  - FEAT-004: React Frontend (complete) [Level 3]
   - FEAT-005: Realtime Activity Feed (planned) [Level 4]
 
 ## Features
@@ -67,7 +67,7 @@
 ### FEAT-004: React Frontend
 
 - **Version**: next
-- **Status**: planned
+- **Status**: complete
 - **Priority**: high
 - **Complexity**: Level 3
 - **Description**: Introduce a React single-page frontend for BanyanBoard consuming the existing REST API. Delivers two views: (1) a **board list page** showing all boards with the ability to open one, and (2) a **board view** rendering the selected board's cards grouped into three fixed columns — To Do / In Progress / Done. Includes frontend tech-stack and build-tooling setup (bundler, routing, API client), UI/UX layout for the board/column presentation, loading/empty/error states, and component structure. Read-oriented in this iteration (card drag-and-drop and card creation from the UI are out of scope unless a later feature adds them).
@@ -78,9 +78,10 @@
   - Loading, empty, and error states are handled for both views
   - Frontend is covered by automated component/UI tests
 - **Dependencies**: FEAT-002 (Board CRUD API — board list + board fetch); FEAT-003 (Card CRUD API — cards to populate columns, including a status field for column grouping). **Depends on both API features being available.**
-- **Linked Tasks**: TASK-004 (planning)
-- **Branch**: feature/FEAT-004-react-frontend
+- **Linked Tasks**: TASK-004 (complete)
+- **Branch**: feature/FEAT-004-react-frontend (merged to main)
 - **Created**: 2026-07-12
+- **Completed**: 2026-07-14 — Read-only React SPA delivered (Vite + React Router + fetch client, dev-proxy for CORS, WCAG 2.1 AA component set); all 11 ACs, 20/20 tests, 0 vulns. Archive: `memory-bank/archive/archive-TASK-004.md`. Follow-up: `/banyan-uat TASK-004` (a11y browser walk) not yet run.
 
 ### FEAT-005: Realtime Activity Feed
 

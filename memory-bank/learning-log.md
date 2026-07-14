@@ -65,3 +65,13 @@ Chronological record of pattern extraction and consolidation events from task re
 - Expired: 0 bullets (all evidence within 90 days)
 - Promoted: 1 file (`testing-patterns.md` low → medium at evidence_count 3; applied during reflection)
 - Pruned: 0 excess bullets (all files ≤3 bullets)
+
+---
+
+## 2026-07-14 - Consolidation (during TASK-004 archive)
+
+- Files before: 7, Files after: 7
+- Merged: 0 files (seven topics remain distinct; `frontend-patterns` and `error-handling` share only the `async-ui` topic tag — <50% overlap, kept separate)
+- Expired: 0 bullets (all evidence within 90 days; earliest 2026-07-10)
+- Promoted: 0 files during consolidation (`error-handling` low→medium at ec 3 was applied during TASK-004 reflection extraction, not here)
+- Pruned: 0 excess bullets (all files ≤4 bullets, cap 15)
