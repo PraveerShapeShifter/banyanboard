@@ -4,6 +4,8 @@ import { log } from './config/logger';
 import { createPool, checkConnection } from './db/pool';
 import { PostgresBoardsRepository } from './boards/boards.repository';
 import { PostgresCardsRepository } from './cards/cards.repository';
+import { PostgresActivityRepository } from './activity/activity.repository';
+import { InProcessActivityEmitter } from './activity/activity.emitter';
 
 const env = loadEnv();
 const pool = createPool(env.databaseUrl);
@@ -11,6 +13,8 @@ const app = createApp({
   checkDb: () => checkConnection(pool),
   boardsRepo: new PostgresBoardsRepository(pool),
   cardsRepo: new PostgresCardsRepository(pool),
+  activityRepo: new PostgresActivityRepository(pool),
+  activityEmitter: new InProcessActivityEmitter(),
 });
 
 app.listen(env.port, () => {

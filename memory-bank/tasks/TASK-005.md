@@ -203,7 +203,7 @@ Directly serves the product's core value ("see status at a glance; keep cards fl
 
 Four stages: three build phases (each independently testable; Phase 3 completes the entry→success journey) plus a post-UAT E2E implementation, per the Level 4 workflow. Concrete transport/model/UX choices are resolved in the two Creative phases below **before** Phase 1/2/3 build begins.
 
-- [ ] **Phase 1 — Activity model + event capture (transport-agnostic backend foundation).**
+- [x] **Phase 1 — Activity model + event capture (transport-agnostic backend foundation).** ✅ BUILD COMPLETE (2026-07-15)
   - Add `db/init/003_*.sql` activity table (per creative event-model decision: `board_id`, `card_id`, `from_status`, `to_status`, `created_at`, optional denormalized `card_title`; identity PK, `TIMESTAMPTZ` default, FK to boards/cards with decided `ON DELETE`, indexed FK + a `(board_id, id)` index for backfill/replay; CHECK on statuses).
   - `src/activity/activity.types.ts` + `src/activity/activity.repository.ts` (DI, mirrors `CardsRepository`): `record(event)`, `findRecentByBoard(boardId, limit)`, `findAfter(boardId, cursor)`.
   - Wire status-transition detection into `PATCH /cards/:id` (`src/cards/cards.routes.ts`) per creative Q2 (old-vs-new via fetch-before-update or `RETURNING` old): on a real transition, persist one event and emit to an injected in-process `ActivityEmitter` (added to `AppDeps` in `src/app.ts`, constructed in `src/server.ts`); no-op/non-status PATCH emits/persists nothing; emission off the response path.
@@ -239,10 +239,24 @@ Level 4 → creative exploration REQUIRED before build. Two phases (mirroring FE
 
 ## Execution State
 
-**Build Status**: IDLE
-**Current Phase**: CREATIVE → BUILD
-**Current Step**: Creative complete — next: `/banyan-build TASK-005` (Phase 1)
+**Build Status**: IDLE (Phase 1 complete — human review gate)
+**Current Build**: Phase 1: Activity model + event capture (TASK-005)
+**Phase Number**: 1 of 4 (3 build phases + post-UAT E2E)
+**Is Multi-Phase**: YES
+**Current Phase**: BUILD (Phase 1 done) → next: `/banyan-build TASK-005` (Phase 2)
+**Current Step**: Step 11 - Git Completion (Phase 1) - COMPLETE
+**Latest Commit**: (Phase 1 commit — see below)
 **Can Resume**: NO
+
+### Completed Steps (Phase 1 build)
+- Step 0.5 Git Setup: feature/FEAT-005-realtime-activity-feed created; plan+creative baseline committed (12d4f3d)
+- Step 3 Test Writer: 9 tests RED — `activity.repository.test.ts` (4), `cards.routes.test.ts` capture block (+5), `app.test.ts` stub wiring. Flagged architecture Q2 `update()` → `{ card, previousStatus }` companion edit (in scope)
+- Step 4 Coding Agent: `db/init/003_card_activity.sql` (identity PK/cursor, board_id CASCADE, card_id SET NULL, denormalized card_title, CHECK statuses, `(board_id,id)` index); `src/activity/{activity.types,activity.repository,activity.emitter}.ts`; `cards.repository.update()` → atomic old-vs-new `RETURNING` subquery returning `{ card, previousStatus }`; `cards.routes.ts` PATCH capture hook (gated on real transition, persist-first then emit, fail-safe try/catch, `activity.captured` log, response contract unchanged); `AppDeps`+`server.ts` wiring; companion edit to `cards.repository.test.ts` update block
+- Step 6-7 Verification: 105/105 tests PASS (was 95; +9 capture/repo +1 fail-safe); `tsc` build clean; lint N/A
+- Step 8 Code Review (build-code-reviewer-agent): APPROVE-WITH-FIXES, 0 blocking. Applied both non-blocking fixes (emitter per-handler try/catch isolation + snapshot; index name aligned to architecture doc) + added the recommended AC-VERIFY-3 capture-failure fail-safe test
+- Step 9-10 Docs/Memory: this file + systemPatterns.md + techContext.md + tasks.md + progress.md
+
+**Delivers**: AC-VERIFY-1 (no-op/non-status → no event), AC-VERIFY-2 (one row + one emit per real transition), AC-VERIFY-3 fail-safe (capture never fails PATCH), persistence half of AC-INTEGRATION-1.
 
 ### Active Sub-Agents
 - Architecture Design (Opus): COMPLETE — `creative/TASK-005-realtime-activity-feed-architecture.md` (SSE, RETURNING-CTE capture, card_activity table, per-board in-process emitter)

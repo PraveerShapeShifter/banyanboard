@@ -1,6 +1,8 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import type { CardsRepository } from './cards.repository';
 import type { BoardsRepository } from '../boards/boards.repository';
+import type { ActivityRepository } from '../activity/activity.repository';
+import type { ActivityEmitter } from '../activity/activity.emitter';
 import { validateCreateCard, validateUpdateCard } from './cards.validation';
 import { log } from '../config/logger';
 
@@ -33,10 +35,19 @@ const BOARD_NOT_FOUND = { error: 'board_id does not reference an existing board'
  * app-level error handler via `next(err)`, so a DB outage yields a safe 500
  * rather than crashing the process — the same fail-safe posture as
  * `boards.routes.ts`.
+ *
+ * `PATCH /cards/:id` additionally captures activity (TASK-005): `cardsRepo`
+ * now returns `{ card, previousStatus }` from a single atomic round-trip
+ * (architecture Q2), and a real transition (`previousStatus !== card.status`)
+ * persists one `card_activity` record via `activityRepo` and fans it out via
+ * `activityEmitter` — both injected so this is testable without a live
+ * transport or database.
  */
 export function createCardsRouter(
   cardsRepo: CardsRepository,
   boardsRepo: BoardsRepository,
+  activityRepo: ActivityRepository,
+  activityEmitter: ActivityEmitter,
 ): Router {
   const router = Router();
 
@@ -111,12 +122,48 @@ export function createCardsRouter(
         res.status(400).json({ error: 'Validation failed', details: result.errors });
         return;
       }
-      const card = await cardsRepo.update(id, result.value);
-      if (!card) {
+      const updateResult = await cardsRepo.update(id, result.value);
+      if (!updateResult) {
         res.status(404).json(NOT_FOUND);
         return;
       }
+      const { card, previousStatus } = updateResult;
       log('info', 'card updated', { cardId: card.id });
+
+      // Activity capture (TASK-005, AC-VERIFY-1/2/3): gated on an actual
+      // status transition, not merely "an update occurred" — `updated_at`
+      // bumps on every PATCH, but a same-status or non-status-only PATCH
+      // must persist/emit nothing. Persist-first (awaited) so backfill/replay
+      // are never missing a row the client could otherwise observe live;
+      // the emit is a synchronous, in-memory, non-blocking fan-out. Wrapped
+      // in try/catch so a capture failure is logged but never fails the
+      // PATCH itself (fail-safe — the write path must not regress).
+      if (previousStatus !== card.status) {
+        try {
+          const event = await activityRepo.record({
+            board_id: card.board_id,
+            card_id: card.id,
+            card_title: card.title,
+            from_status: previousStatus,
+            to_status: card.status,
+          });
+          activityEmitter.emit(card.board_id, event);
+          log('info', 'activity.captured', {
+            board_id: card.board_id,
+            card_id: card.id,
+            from_status: previousStatus,
+            to_status: card.status,
+            activity_id: event.id,
+          });
+        } catch (err) {
+          log('error', 'activity.capture.error', {
+            board_id: card.board_id,
+            card_id: card.id,
+            message: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
       res.status(200).json(card);
     } catch (err) {
       next(err);

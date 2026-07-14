@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import type { Card, CreateCardInput, UpdateCardInput } from './cards.types';
+import type { Card, CardStatus, CreateCardInput, UpdateCardInput } from './cards.types';
 
 /**
  * Data-access contract for cards. The HTTP layer depends on this interface
@@ -11,8 +11,15 @@ export interface CardsRepository {
   /** All cards, or only those on `boardId` when supplied. */
   findAll(boardId?: number): Promise<Card[]>;
   findById(id: number): Promise<Card | null>;
-  /** Returns the updated card, or `null` if no card has that id. */
-  update(id: number, input: UpdateCardInput): Promise<Card | null>;
+  /**
+   * Applies a partial update and returns the updated card together with its
+   * status *before* this update, captured atomically in the same round-trip
+   * (TASK-005 architecture Q2) — or `null` if no card has that id. The
+   * caller (the `PATCH /cards/:id` route) compares `previousStatus` against
+   * `card.status` to detect a real transition for activity capture, without
+   * a separate read and its associated race window.
+   */
+  update(id: number, input: UpdateCardInput): Promise<{ card: Card; previousStatus: CardStatus } | null>;
   /** Returns `true` if a row was removed, `false` if the id did not exist. */
   delete(id: number): Promise<boolean>;
 }
@@ -87,7 +94,10 @@ export class PostgresCardsRepository implements CardsRepository {
     return result.rows[0] ? toCard(result.rows[0]) : null;
   }
 
-  async update(id: number, input: UpdateCardInput): Promise<Card | null> {
+  async update(
+    id: number,
+    input: UpdateCardInput,
+  ): Promise<{ card: Card; previousStatus: CardStatus } | null> {
     const sets: string[] = [];
     const params: unknown[] = [];
 
@@ -112,11 +122,23 @@ export class PostgresCardsRepository implements CardsRepository {
     sets.push('updated_at = now()');
 
     params.push(id);
+    const idParam = params.length;
+    // TASK-005 (architecture Q2): fold the prior `status` into the same
+    // round-trip via a `FROM` subquery, rather than a separate SELECT before
+    // the UPDATE. Single statement, race-free (old and new are observed
+    // atomically) — a fetch-before-update would add a round-trip and a
+    // window where a concurrent PATCH could change status in between.
     const result = await this.pool.query(
-      `UPDATE cards SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING ${COLUMNS}`,
+      `UPDATE cards SET ${sets.join(', ')}
+       FROM (SELECT status AS prev_status FROM cards WHERE id = $${idParam}) AS old
+       WHERE cards.id = $${idParam}
+       RETURNING ${COLUMNS}, old.prev_status AS previous_status`,
       params,
     );
-    return result.rows[0] ? toCard(result.rows[0]) : null;
+    const row = result.rows[0];
+    if (!row) return null;
+    const { previous_status, ...cardRow } = row;
+    return { card: toCard(cardRow), previousStatus: previous_status };
   }
 
   async delete(id: number): Promise<boolean> {
