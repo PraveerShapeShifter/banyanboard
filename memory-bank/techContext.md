@@ -8,16 +8,17 @@ This file documents the technology stack, infrastructure, and tooling used in th
 
 ```
 Component Name: Web Frontend
-- Path: [TBD, e.g. frontend/ or apps/web]
-- Language: TypeScript (React)
-- Test Directory: [TBD]
-- Test Framework: [TBD, e.g. Vitest + React Testing Library]
+- Path: frontend/ (standalone package at repo root, "type": "module"; Vite + React SPA)
+- Language: TypeScript (React 18)
+- Build tool: Vite 6 (+ @vitejs/plugin-react); dev-server proxies /api → the API (CORS-free, backend untouched)
+- Test Directory: co-located (src/**/*.test.ts[x]), e.g. src/api/client.test.ts
+- Test Framework: Vitest 3 + React Testing Library + jsdom
 
 Component Name: API Backend
-- Path: [TBD, e.g. backend/ or apps/api]
+- Path: src/ (at repo root; root package.json "type": "commonjs")
 - Language: TypeScript (Node.js, Express)
-- Test Directory: [TBD]
-- Test Framework: [TBD, e.g. Jest or Vitest + Supertest]
+- Test Directory: co-located (src/**/*.test.ts)
+- Test Framework: Vitest + Supertest
 
 Component Name: Database
 - Path: [TBD — migrations/schema location]
@@ -31,8 +32,8 @@ Component Name: Database
 
 ### Shared/Common Code
 
-- Location: [TBD — e.g. shared types package for API/UI contract]
-- Purpose: Shared TypeScript types for the board/column/card domain (recommended to keep frontend and backend in sync)
+- Location: None (deliberate). Frontend owns its wire types in `frontend/src/api/types.ts`; backend owns its domain types in `src/**`.
+- Purpose: A shared package was evaluated and declined for TASK-004 (Architecture creative Q5): the wire format serializes `Date` fields to `string`, so a single shared literal type would be inaccurate for one side, and a shared package would force a monorepo restructure of the completed backend. Promotion path: introduce a `contract/` package with explicit wire-DTO types if/when the frontend gains writes (FEAT-005+) or the contract starts changing.
 
 ## Development Commands
 
@@ -46,32 +47,34 @@ docker compose up
 docker compose down
 ```
 
+### Frontend (frontend/)
+
+```bash
+cd frontend
+npm install            # first-time setup
+npm run dev            # Vite dev server (HMR) at http://localhost:5173, proxies /api → the API
+npm run build          # tsc --noEmit (type-check) then vite build → dist/
+npm run preview        # serve the production build
+npm run test           # Vitest run (component/unit tests)
+npm run typecheck      # tsc --noEmit only
+```
+
+Config: API base URL from `VITE_API_BASE_URL` (default `/api`); dev proxy target from
+`VITE_API_PROXY_TARGET` (default `http://localhost:3000`). See `frontend/README.md`
+(the `.env.example` template lives there — the repo tooling guards `.env*` paths).
+
+### Backend (repo root)
+
+```bash
+npm test               # Vitest + Supertest (95/95 passing)
+npm run build          # tsc (strict)
+```
+
 ### Linting
 
-```bash
-# TBD — e.g. npm run lint (per component)
-```
-
-### Type Checking
-
-```bash
-# TBD — e.g. tsc --noEmit (per component)
-```
-
-### Building
-
-```bash
-# TBD — e.g. npm run build (per component)
-```
-
-### Testing
-
-```bash
-# TBD — e.g. npm test (per component)
-```
-
-> Concrete lint/type-check/build/test commands will be filled in as the toolchain
-> is established during the first build task.
+No dedicated linter is configured (frontend or backend). Static checking is via
+`tsc --noEmit` (strict), run standalone (`npm run typecheck`) and as the first
+step of the frontend `build`.
 
 ## Technology Stack
 
@@ -103,9 +106,9 @@ docker compose down
 
 ### Development Tools
 
-- Build tool: [TBD — e.g. Vite for frontend]
-- Testing frameworks: [TBD]
-- Code quality: [TBD — e.g. ESLint + Prettier]
+- Build tool: Vite 6 (frontend); tsc (backend)
+- Testing frameworks: Vitest 3 + React Testing Library + jsdom (frontend); Vitest + Supertest (backend)
+- Code quality: TypeScript strict mode (`tsc --noEmit`) both sides; no ESLint/Prettier configured yet
 
 ### External Services
 
