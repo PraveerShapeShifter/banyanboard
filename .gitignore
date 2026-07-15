@@ -7,6 +7,9 @@ dist/
 # Local environment
 .env
 
+# UAT credential vault (recorded in uat-config.md; unused today — no auth)
+.auth/
+
 # Session logs (generated, may contain sensitive info)
 .agent-logs/sessions/
 .agent-logs/claude/

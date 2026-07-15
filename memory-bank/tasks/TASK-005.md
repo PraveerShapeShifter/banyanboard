@@ -1,7 +1,8 @@
 # TASK-005: Realtime Activity Feed
 
 **Complexity**: Level 4
-**Status**: CREATIVE_COMPLETE
+**Status**: UAT_PASS
+**UAT**: PASS_WITH_RECOMMENDATIONS (run `20260715-uat-inline`, 2026-07-15) — Required=0, Recommended=2. Report: `memory-bank/uat/uat-TASK-005.md`; E2E spec: `memory-bank/uat/spec-TASK-005-e2e.md`
 **Roadmap**: FEAT-005
 **Branch**: feature/FEAT-005-realtime-activity-feed
 **Worktree**: N/A
@@ -230,7 +231,9 @@ Four stages: three build phases (each independently testable; Phase 3 completes 
 
 ## Creative Phases
 
-Level 4 → creative exploration REQUIRED before build. Two phases (mirroring FEAT-004's successful Architecture + UI/UX split); they map onto the five LOW-confidence questions in the Specification.
+Level 4 → creative exploration REQUIRED before build. Two phases (mirroring FEAT-004's successful Architecture + UI/UX split); they map onto the five LOW-confidence questions in the Specification. A **User Journey** phase was added later (2026-07-15) to unblock `/banyan-uat`.
+
+- [x] **User Journey Design** → COMPLETE → `memory-bank/creative/TASK-005-realtime-activity-feed-user-journey.md`. UAT-walkable journey grounded in the shipped read-only UI. Key finding: the board exposes **no write controls** (verified across `Card.tsx`/`Column.tsx`/`Columns.tsx`/`api/client.ts`), so the only status-change trigger is a direct `PATCH /api/cards/:id` (driven in-page via the `/api` proxy — genuine end-to-end path, one browser context). Second finding: **only the feed is live; columns render from a one-time fetch**, so AC-HAPPY-1's "column counts reflect the move" is a post-reload check, not a live-column expectation. Four walk sections (Happy / Mobile 375×667 / Negative — N/A no-auth, verifies zero write affordances / Error — reconnecting→degraded via request-blocking + gap-replay), each with numbered steps, per-step Actor (team_lead/contributor/stakeholder), Verify checklist, and Cleanup. All ACs mapped.
 
 - [x] **Architecture Design** → COMPLETE → `memory-bank/creative/TASK-005-realtime-activity-feed-architecture.md`. Decisions: **Q1 Transport = SSE** (`GET /api/activity/stream?board_id=:id` → `text/event-stream`; traverses the existing Vite `/api` proxy unchanged, keeps `src/server.ts` on `app.listen`, native `Last-Event-ID` reconnect, Supertest-testable; WS/long-poll rejected). **Q2 Capture = atomic old-vs-new via a `RETURNING` CTE inside `cards.repository.update()`**, orchestrated in the `PATCH /cards/:id` handler; activity INSERT awaited (persist-first, backs replay), in-memory emit off the response path; gated on `previousStatus !== newStatus` (no-op/non-status PATCH emits nothing — AC-VERIFY-1/2/3). **Q3 Persistence = new `card_activity` table**: identity PK `id` (doubles as cursor), `board_id` FK `ON DELETE CASCADE`, `card_id` FK `ON DELETE SET NULL`, denormalized `card_title` (survives deletion), CHECK-constrained `from_status`/`to_status`, `created_at`; composite `(board_id, id)` index for backfill+replay; cursor via `Last-Event-ID`; `actor` deferred (additive when auth lands). **Q4 Fan-out = per-board in-process `ActivityEmitter`** (`Map<boardId, Set<handler>>`) injected via `createApp(deps)` (`AppDeps` gains `activityRepo` + `activityEmitter`, constructed in `src/server.ts`); subscribe-before-backfill with dedupe by `id`; `ACTIVITY_HEARTBEAT_MS` keepalive; `req.on('close')` cleanup (no leak); single→multi-instance boundary (Postgres `LISTEN/NOTIFY`/Redis) documented behind the emitter interface, NOT built.
 - [x] **UI/UX Design** → COMPLETE → `memory-bank/creative/TASK-005-realtime-activity-feed-uiux.md`. Decisions: **Placement = persistent side panel** — desktop (>1024px) a 4th CSS Grid track (`repeat(3,1fr) minmax(260px,320px)`) right of the columns; tablet (640–1024px) full-width row below the columns; mobile (<640px) 4th stacked section after Done (drawer + dedicated route rejected — the latter fails AC-ENTRY-1's "on `/boards/:id`"). **Item phrasing** = `{actor} moved "{card_title}" from {From} to {To}` with `{actor}` = "Someone" today (only token that changes when auth lands); deleted cards render identically (denormalized `card_title`); absolute timestamps via `<time dateTime>` (extends `Card.tsx`'s `formatDueDate`). **Five states**: connecting (reuse `Loading`), open+streaming (newest-first `<ul>`), open+empty (reuse `EmptyState`, calm copy), reconnecting (new `ActivityFeedStatus` banner `role="status"`, list stays visible), degraded (`ActivityFeedStatus` `role="alert"`, list frozen/visible, rest of board unaffected — AC-ERROR-1). **a11y**: `aria-live="polite"` on a **visually-hidden dedicated announcer** decoupled from the visible list, with an "arming heuristic" (quiet period after entering/re-entering `open`) so backfill + reconnect-replay bursts are silent and only genuinely-new live events announce (kills the chatty-feed risk); status conveyed by text (from→to), no focus stealing on append. **Components**: `ActivityFeed` (region+hook), `ActivityFeedItem`, `ActivityFeedStatus` (new, feed-local), `useActivityStream` hook (mirrors `useApiResource`), `api/activityStream.ts` (the `EventSource` seam, mirrors `api/client.ts`); reuses `Loading`/`EmptyState` unmodified.
@@ -239,14 +242,22 @@ Level 4 → creative exploration REQUIRED before build. Two phases (mirroring FE
 
 ## Execution State
 
-**Build Status**: IDLE (Phase 3 complete — human review gate)
+**Build Status**: IDLE (UAT PASS — ready for Phase 4 E2E build)
 **Current Build**: Phase 3: Frontend live feed UI (TASK-005)
-**Phase Number**: 3 of 4 (3 build phases done; post-UAT E2E remains)
+**Phase Number**: 3 of 4 (3 build phases done; UAT PASS; post-UAT E2E remains)
 **Is Multi-Phase**: YES
-**Current Phase**: BUILD (Phase 3 done) → next: `/banyan-uat TASK-005` then Phase 4 (E2E)
-**Current Step**: Step 11 - Git Completion (Phase 3) - COMPLETE
-**Latest Commit**: (Phase 3 commit — see below)
+**Current Phase**: UAT (PASS_WITH_RECOMMENDATIONS) → next: `/banyan-build TASK-005` (Phase 4: implement E2E spec)
+**Current Step**: `/banyan-uat` COMPLETE — report + E2E spec written
+**Latest Commit**: 7e4f91d (Phase 3, pushed to origin/feature/FEAT-005-realtime-activity-feed)
 **Can Resume**: NO
+
+### UAT (run 20260715-uat-inline, 2026-07-15)
+- **Verdict**: PASS_WITH_RECOMMENDATIONS — Required=0, Recommended=2, Optional=0. All 10 ACs verified.
+- **Setup added to unblock**: `memory-bank/uat-config.md`, `memory-bank/ux-patterns.md` (scaffold), `memory-bank/creative/TASK-005-realtime-activity-feed-user-journey.md`, `.auth/` added to `.gitignore`, header status corrected CREATIVE_COMPLETE→BUILD_COMPLETE→UAT_PASS.
+- **Walk**: inline single-context browser walk against seeded board 1 ("Q3 Delivery Board", 4 cards, 3 activity rows). Verified live: entry region (ENTRY-1), backfill (ASYNC-1), live push 229ms no-reload (HAPPY-1, VERIFY-3), phrasing + newest-first + aria-live announce (HAPPY-2), no-op gating at feed+DB (VERIFY-1), one-row-per-transition at DB (VERIFY-2), distinct real items (INTEGRATION-1), Last-Event-ID replay no-gap/no-dupe + reconnecting banner (ASYNC-2), degraded `role="alert"` "Activity feed offline" with board unaffected (ERROR-1), read-only feed (no write controls).
+- **Pre-flight remediation (env, not a product bug)**: dev Postgres volume predated `003_card_activity.sql`; table was missing so capture silently no-opped (fail-safe swallow). Applied the idempotent `003` migration in place (no data dropped). → **REC-1**: no migration path for existing deployments + missing table fails silently to an empty feed (add migration runner + readiness signal).
+- **REC-2**: mobile breakpoint not verifiable — the UAT MCP renders at a fixed large viewport; covered by responsive CSS + the E2E spec's device-emulation case.
+- **Outputs**: `memory-bank/uat/uat-TASK-005.md` (report), `memory-bank/uat/spec-TASK-005-e2e.md` (framework-agnostic E2E spec).
 
 ### Completed Steps (Phase 3 build)
 - Step 3 Test Writer: 13 tests RED — `activityStream.test.ts` (3), `useActivityStream.test.ts` (4), `ActivityFeed.test.tsx` (5), `BoardViewPage.test.tsx` (+1 mount, region 3→4), shared `test/fakeEventSource.ts`
