@@ -18,7 +18,7 @@
   - FEAT-002: Board CRUD API (planned) [Level 3]
   - FEAT-003: Card CRUD API (complete) [Level 3]
   - FEAT-004: React Frontend (complete) [Level 3]
-  - FEAT-005: Realtime Activity Feed (planned) [Level 4]
+  - FEAT-005: Realtime Activity Feed (complete) [Level 4]
 
 ## Features
 
@@ -86,11 +86,12 @@
 ### FEAT-005: Realtime Activity Feed
 
 - **Version**: next
-- **Status**: planned
+- **Status**: complete
 - **Priority**: medium
 - **Complexity**: Level 4
 - **Description**: Track and display a realtime activity feed of card movements between columns. Captures a card-movement event whenever a card's `status` changes (To Do ↔ In Progress ↔ Done — the `PATCH /cards/:id { status }` path from FEAT-003), persists it as an activity/event record, and pushes it live to connected clients so the frontend can render a continuously-updating feed without polling. Introduces the project's first realtime push transport (WebSocket or SSE) — a new server capability with connection-lifecycle management, event fan-out to subscribers, and reconnection/backfill semantics — plus an activity persistence model and a frontend live-feed UI. Expected to be phased (event capture + store → push transport → frontend feed) with multiple creative phases (transport architecture, event/activity model, feed UX).
 - **Dependencies**: FEAT-003 (Card CRUD API — card `status` changes are the events being tracked); FEAT-004 (React Frontend — the surface that renders the live feed). FEAT-001 (foundation — Express app factory, `pg` pool, logger).
-- **Linked Tasks**: TASK-005 (planning)
-- **Branch**: feature/FEAT-005-realtime-activity-feed
+- **Linked Tasks**: TASK-005 (complete)
+- **Branch**: feature/FEAT-005-realtime-activity-feed (merged to main)
 - **Created**: 2026-07-13
+- **Completed**: 2026-07-15 — Realtime Activity Feed delivered (SSE push transport, `card_activity` capture on the `PATCH /cards/:id` path, per-board in-process fan-out, accessible live side-panel feed); all 10 ACs + AC-NAV-1, 118/118 backend + 35/35 frontend tests, UAT PASS_WITH_RECOMMENDATIONS (0 Required). Archive: `memory-bank/archive/archive-TASK-005.md`. Deferred follow-ups: Phase 4 E2E impl (spec ready), REC-1 migration path, REC-2 mobile verification + announcer sentinel.

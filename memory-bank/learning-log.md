@@ -74,6 +74,16 @@ Chronological record of pattern extraction and consolidation events from task re
 
 ---
 
+## 2026-07-15 - Consolidation (during TASK-005 archive)
+
+- Files before: 8, Files after: 8
+- Merged: 0 files (no pair >50% topic/glob overlap — `connection-lifecycle` is backend `src/**/*.routes.ts` streaming vs `frontend-patterns` `frontend/src/**`; they share only the `streaming`/`async` topic tags, <50%)
+- Expired: 0 bullets (all evidence within 90 days; earliest 2026-07-10)
+- Promoted: 0 files during consolidation (`data-access` low→medium at ec 3 was applied during TASK-005 reflection extraction, not here)
+- Pruned: 0 excess bullets (all files ≤4 bullets, cap 15)
+
+---
+
 ## 2026-07-13 - Consolidation (during TASK-003 archive)
 
 - Files before: 6, Files after: 6

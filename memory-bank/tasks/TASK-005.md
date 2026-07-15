@@ -1,8 +1,10 @@
 # TASK-005: Realtime Activity Feed
 
 **Complexity**: Level 4
-**Status**: REFLECTION_COMPLETE
+**Status**: COMPLETE
 **Reflection**: memory-bank/reflection/reflection-TASK-005.md
+**Archived**: memory-bank/archive/archive-TASK-005.md
+**Completed**: 2026-07-15
 **UAT**: PASS_WITH_RECOMMENDATIONS (run `20260715-uat-inline`, 2026-07-15) — Required=0, Recommended=2. Report: `memory-bank/uat/uat-TASK-005.md`; E2E spec: `memory-bank/uat/spec-TASK-005-e2e.md`
 **Roadmap**: FEAT-005
 **Branch**: feature/FEAT-005-realtime-activity-feed
@@ -245,11 +247,11 @@ Level 4 → creative exploration REQUIRED before build. Two phases (mirroring FE
 
 **Build Status**: IDLE
 **Current Build**: Phase 3: Frontend live feed UI (TASK-005)
-**Phase Number**: 3 of 4 (3 build phases done; UAT PASS; reflection done; post-UAT E2E remains)
+**Phase Number**: 3 of 4 (3 build phases done; UAT PASS; reflection done; Phase 4 E2E DEFERRED)
 **Is Multi-Phase**: YES
-**Current Phase**: REFLECT → ARCHIVE
-**Current Step**: `/banyan-reflect` COMPLETE — reflection + learned rules committed
-**Latest Commit**: (reflection commit — see below)
+**Current Phase**: COMPLETE
+**Current Step**: `/banyan-archive` COMPLETE — Task Archive (Phase 4 deferred as tracked follow-up); local-merge to main
+**Latest Commit**: 653ecd1 (reflection); archive commit + merge to main follow
 **Can Resume**: NO
 
 ### Reflection (run 2026-07-15)

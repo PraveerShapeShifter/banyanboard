@@ -48,6 +48,16 @@ Chronological record of completed phases and tasks. Updated by `/banyan-archive`
 
 ---
 
+## Task Archive: TASK-005
+
+**Task**: Realtime Activity Feed (FEAT-005)
+**Status**: ✅ ARCHIVED
+**Date**: 2026-07-15
+**Archive**: `memory-bank/archive/archive-TASK-005.md`
+**Disposition**: local-merge → `main` (Archive Strategy per projectbrief.md; note projectbrief still records `Provider: None` though an `origin` remote exists — strategy remains local-merge, main not pushed). **Full Task Archive with Phase 4 (post-UAT E2E) explicitly deferred** as a tracked follow-up (reflection recommendation + TASK-004 precedent). First realtime feature: SSE push transport (`GET /api/activity/stream`), atomic `card_activity` capture on the `PATCH /cards/:id` path, per-board in-process `ActivityEmitter`, accessible live side-panel feed. All 10 ACs + UAT-added AC-NAV-1; 118/118 backend + 35/35 frontend tests, zero regressions; UAT PASS_WITH_RECOMMENDATIONS (0 Required, 2 Recommended). Code review BLOCKed in Phase 2 & 3, catching real bugs the tests missed. Learned-rule consolidation: 8 files, no merges/expiry/pruning (`connection-lifecycle` created + `data-access` promoted low→medium during reflection). Deferred follow-ups: **Phase 4 E2E** (spec ready at `memory-bank/uat/spec-TASK-005-e2e.md`), **REC-1** migration path + readiness signal (missing `card_activity` table fails silently to empty feed), **REC-2** mobile verification + replace client arm-timer with a server backfill-complete sentinel.
+
+---
+
 ## Task Archive: TASK-004
 
 **Task**: React Frontend (FEAT-004)
