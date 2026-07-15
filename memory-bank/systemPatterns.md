@@ -48,7 +48,24 @@ wired via DATABASE_URL over the compose network; api starts only after db is hea
 - **In-process event fan-out seam (TASK-005)** — `ActivityEmitter` (a purpose-built `subscribe`/`emit` interface, not raw `EventEmitter`) is injected via `AppDeps` and constructed in `server.ts` (`InProcessActivityEmitter`, `Map<boardId, Set<handler>>`). It is the single swap-point for a future multi-instance promotion (Postgres `LISTEN/NOTIFY` / Redis pub/sub) — capture hook, repository, and routes never change, only the injected implementation. Fan-out isolates each subscriber (a throwing handler is caught + logged, never aborts delivery to the rest).
 - **Side-effect capture on the write path (TASK-005)** — status transitions are captured in the `PATCH /cards/:id` handler: `cardsRepo.update()` returns `{ card, previousStatus }` from a single atomic `RETURNING` subquery (race-free old-vs-new), and only a real transition (`previousStatus !== card.status`) persists one `card_activity` row (**persist-first**) then emits. Capture is wrapped fail-safe — a capture failure is logged and never fails or alters the PATCH response.
 
+## Webhook Delivery Pattern
+
+> Target pattern for TASK-006 / FEAT-006 (Card Workflow Automation), Phase 3 —
+> documented ahead of build; delivery is decoupled from and fail-safe with respect
+> to trigger execution (a failed webhook never rolls back or fails the auto-move).
+
+When a trigger with webhook configuration fires:
+1. Trigger execution completes first (decoupled from delivery)
+2. Webhook delivery queued as separate async job
+3. Delivery attempts: max 3, 30-second backoff between attempts
+4. Delivery record: `{ rule_id, attempt_count, status, http_response_code, error, created_at }`
+5. Status lifecycle: `pending → delivered | failed → exhausted`
+
 ## Recent Architecture Changes
+
+### 2026-07-16 — Rule-engine seam + fire-and-forget webhook dispatch (TASK-006, as-built)
+- **Pattern**: an injected `CardRuleEngine` seam (mirrors the `ActivityEmitter` idiom — constructed in `server.ts`, added to `AppDeps`, invoked inside the existing `previousStatus !== card.status` gate in `PATCH /cards/:id` after the FEAT-005 capture block) evaluates a card's post-update state against the board's enabled rules **synchronously** and applies auto-moves in a **bounded, terminating** pass (visited-status `Set` + `MAX_HOPS = CARD_STATUSES.length`, first-match-wins by lowest `id`); internally fail-safe (logs + returns last-applied card, never throws/500s the card write). Each firing records a `trigger_executions` row; a `webhook_url`-bearing firing is handed to an injected **`WebhookDispatcher`** that creates the `pending` `webhook_deliveries` row synchronously then runs the outbound POST + `setTimeout(30s).unref()` bounded retries **fire-and-forget off the request path** — the DB row is the source of truth (`pending → delivered | failed → exhausted`), so a slow/unreachable endpoint never enters the card PATCH latency budget and never fails the write. This realizes (and supersedes the "target" framing of) the **Webhook Delivery Pattern** section above.
+- **Source**: `memory-bank/creative/TASK-006-card-workflow-automation-architecture.md`, `memory-bank/creative/TASK-006-webhook-architecture.md`, `memory-bank/creative/TASK-006-webhook-retry-algorithm.md`
 
 ### 2026-07-15 — Realtime activity capture + in-process fan-out (TASK-005 Phase 1)
 - **Pattern**: capture card-status transitions on the existing write path into a `card_activity` table + an injected in-process `ActivityEmitter`, transport-agnostic (SSE transport is Phase 2). Persist-first, emit-second, gated on a real transition, fail-safe.

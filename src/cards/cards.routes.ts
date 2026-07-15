@@ -3,6 +3,7 @@ import type { CardsRepository } from './cards.repository';
 import type { BoardsRepository } from '../boards/boards.repository';
 import type { ActivityRepository } from '../activity/activity.repository';
 import type { ActivityEmitter } from '../activity/activity.emitter';
+import type { RuleEngine } from '../rules/rules.engine';
 import { validateCreateCard, validateUpdateCard } from './cards.validation';
 import { log } from '../config/logger';
 
@@ -42,12 +43,21 @@ const BOARD_NOT_FOUND = { error: 'board_id does not reference an existing board'
  * persists one `card_activity` record via `activityRepo` and fans it out via
  * `activityEmitter` — both injected so this is testable without a live
  * transport or database.
+ *
+ * `PATCH /cards/:id` then invokes the injected `ruleEngine` (TASK-006, Phase 2)
+ * inside the same real-transition gate, immediately after the activity-capture
+ * block: the engine evaluates the card's new state against the board's enabled
+ * rules and applies bounded auto-move hops, so the response reflects the card's
+ * FINAL post-automation status. The engine is internally fail-safe; a defensive
+ * route-level try/catch mirrors the activity block so even an engine defect
+ * cannot turn the caller's successful PATCH into a 500 (AC-ERROR-3).
  */
 export function createCardsRouter(
   cardsRepo: CardsRepository,
   boardsRepo: BoardsRepository,
   activityRepo: ActivityRepository,
   activityEmitter: ActivityEmitter,
+  ruleEngine: RuleEngine,
 ): Router {
   const router = Router();
 
@@ -130,6 +140,11 @@ export function createCardsRouter(
       const { card, previousStatus } = updateResult;
       log('info', 'card updated', { cardId: card.id });
 
+      // The response reflects the card's FINAL status. On a real transition the
+      // rule engine may auto-move it further; `finalCard` starts as the
+      // manually-applied card and is replaced by the engine's result.
+      let finalCard = card;
+
       // Activity capture (TASK-005, AC-VERIFY-1/2/3): gated on an actual
       // status transition, not merely "an update occurred" — `updated_at`
       // bumps on every PATCH, but a same-status or non-status-only PATCH
@@ -146,6 +161,7 @@ export function createCardsRouter(
             card_title: card.title,
             from_status: previousStatus,
             to_status: card.status,
+            triggered_by: 'manual',
           });
           activityEmitter.emit(card.board_id, event);
           log('info', 'activity.captured', {
@@ -162,9 +178,26 @@ export function createCardsRouter(
             message: err instanceof Error ? err.message : String(err),
           });
         }
+
+        // Rule evaluation (TASK-006, Phase 2), gated on a real transition: a
+        // non-status PATCH changes no match state, so the engine must not run
+        // (latency + no spurious auto-moves). The engine is internally
+        // fail-safe; the defensive try/catch mirrors the activity block as
+        // belt-and-suspenders so even an engine defect keeps the PATCH a 200
+        // with the manually-applied card (AC-ERROR-3).
+        try {
+          finalCard = await ruleEngine.evaluate(card);
+        } catch (err) {
+          log('error', 'rules.execution_failed', {
+            code: 'RULE_EXECUTION_FAILED',
+            card_id: card.id,
+            board_id: card.board_id,
+            message: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
 
-      res.status(200).json(card);
+      res.status(200).json(finalCard);
     } catch (err) {
       next(err);
     }

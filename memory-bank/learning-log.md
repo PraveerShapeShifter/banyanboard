@@ -4,6 +4,32 @@ Chronological record of pattern extraction and consolidation events from task re
 
 ---
 
+## 2026-07-16 - Consolidation (during TASK-006 archive)
+
+- Files before: 10, Files after: 10
+- Merged: 0 files (no pair exceeds 50% topic/glob overlap — closest is `security`↔`data-access` at 33% via the shared "security" topic)
+- Expired: 0 bullets (0 files deleted — all evidence rows are ≤6 days old, well under the 90-day threshold)
+- Promoted: 0 files (`api-design` was already promoted low→medium during the TASK-006 reflection at evidence_count 3; no other file is at ec≥3 with low priority)
+- Pruned: 0 excess bullets (no file exceeds the 15-bullet cap)
+- **At cap**: 10/10 files. Next task's extractions must amend existing files (or merge) rather than create new ones unless a merge frees a slot.
+
+---
+
+## 2026-07-16 - TASK-006 Reflection
+
+### Extracted Patterns
+- **async-dispatch** → created `agent-rules/_learned/async-dispatch.md` (evidence count: 1) — fire-and-forget off-request-path dispatch with a synchronously-created DB row as durable source of truth, `.unref()` timers, fully fail-safe; **folded in** the request-path performance learning (bound synchronous traversal by an enum's cardinality, `MAX_HOPS = STATUSES.length`) as a second bullet, since both protect the p95 latency budget and the cap was reached at 10 files
+- **api-design** → amended `agent-rules/_learned/api-design.md` (evidence count: 3) — state a deliberate response-shape divergence + "do not homogenize" directly in the spec next to the AC, not only in a design doc. **Promoted low → medium** (crossed threshold 3).
+- **security** → created `agent-rules/_learned/security.md` (evidence count: 1) — treat SSRF exposure from user-supplied outbound URLs as a mandatory documented accepted-risk decision recorded where the validation lives
+
+### Cap Handling
+- Started at 8 files, cap 10. Created 2 new files (async-dispatch, security) → 10 files. The 4th learning (performance) was folded into `async-dispatch.md` rather than creating an 11th file (cap-forced consolidate — both learnings serve request-path latency protection).
+
+### systemPatterns.md Updates
+- **Rule-engine seam + fire-and-forget webhook dispatch (TASK-006, as-built)** added to Recent Architecture Changes — `CardRuleEngine` seam (synchronous bounded auto-move on the `PATCH /cards/:id` path) + injected `WebhookDispatcher` (DB-row-source-of-truth, off-path retries), realizing the previously-aspirational "Webhook Delivery Pattern" section.
+
+---
+
 ## 2026-07-10 - TASK-001 Reflection
 
 ### Extracted Patterns

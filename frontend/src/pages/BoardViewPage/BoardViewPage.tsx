@@ -68,7 +68,7 @@ export default function BoardViewPage() {
 
   return (
     <main className="board-view">
-      <BoardHeader name={state.data.board.name} />
+      <BoardHeader name={state.data.board.name} id={state.data.board.id} />
       <Columns cards={state.data.cards} />
       <ActivityFeed boardId={id} />
     </main>

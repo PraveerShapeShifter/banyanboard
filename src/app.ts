@@ -12,6 +12,11 @@ import type { CardsRepository } from './cards/cards.repository';
 import type { ActivityRepository } from './activity/activity.repository';
 import type { ActivityEmitter } from './activity/activity.emitter';
 import { createActivityRouter, type ActivityStreamConfig } from './activity/activity.routes';
+import { createRulesRouter } from './rules/rules.routes';
+import type { RulesRepository } from './rules/rules.repository';
+import type { RuleEngine } from './rules/rules.engine';
+import { createWebhooksRouter } from './webhooks/webhooks.routes';
+import type { WebhooksRepository } from './webhooks/webhooks.repository';
 import { log } from './config/logger';
 
 /**
@@ -32,6 +37,12 @@ export interface AppDeps {
   activityEmitter: ActivityEmitter;
   /** Backfill/heartbeat knobs (TASK-005 Phase 2) for the SSE activity stream. */
   activityStreamConfig: ActivityStreamConfig;
+  /** Data-access layer for automation rules (TASK-006); backs the Rule CRUD routes. */
+  rulesRepo: RulesRepository;
+  /** Injected rule-evaluation seam (TASK-006 Phase 2); invoked by `PATCH /cards/:id`. */
+  ruleEngine: RuleEngine;
+  /** Data-access layer for trigger executions + webhook deliveries (TASK-006); backs the read routes. */
+  webhooksRepo: WebhooksRepository;
 }
 
 /**
@@ -48,8 +59,18 @@ export function createApp(deps: AppDeps): Express {
 
   app.use(createHealthRouter(deps.checkDb));
   app.use(createBoardsRouter(deps.boardsRepo));
-  app.use(createCardsRouter(deps.cardsRepo, deps.boardsRepo, deps.activityRepo, deps.activityEmitter));
+  app.use(
+    createCardsRouter(
+      deps.cardsRepo,
+      deps.boardsRepo,
+      deps.activityRepo,
+      deps.activityEmitter,
+      deps.ruleEngine,
+    ),
+  );
   app.use(createActivityRouter(deps.activityRepo, deps.activityEmitter, deps.activityStreamConfig));
+  app.use(createRulesRouter(deps.rulesRepo, deps.boardsRepo));
+  app.use(createWebhooksRouter(deps.webhooksRepo));
 
   // Central error handler. Turns a malformed JSON body into a 400 and any other
   // unexpected failure (e.g. a database outage surfaced via `next(err)`) into a

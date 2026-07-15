@@ -8,6 +8,10 @@ import type { Card, CreateCardInput, UpdateCardInput } from './cards.types';
 import type { ActivityRepository } from '../activity/activity.repository';
 import type { CardActivity, RecordActivityInput } from '../activity/activity.types';
 import type { ActivityEmitter } from '../activity/activity.emitter';
+import type { RuleEngine } from '../rules/rules.engine';
+import type { RulesRepository } from '../rules/rules.repository';
+import type { WebhooksRepository } from '../webhooks/webhooks.repository';
+import type { ActivityStreamConfig } from '../activity/activity.routes';
 
 /**
  * Supertest-driven integration tests for the Card CRUD HTTP layer, exercising
@@ -148,6 +152,8 @@ function makeActivityRepo(): { activityRepo: ActivityRepository; records: CardAc
         card_title: input.card_title,
         from_status: input.from_status,
         to_status: input.to_status,
+        triggered_by: input.triggered_by ?? 'manual',
+        rule_id: input.rule_id ?? null,
         created_at: new Date(),
       };
       records.push(event);
@@ -201,18 +207,85 @@ const throwingCardsRepo: CardsRepository = {
   },
 };
 
-function makeApp() {
+/**
+ * A passthrough `RuleEngine` stub (TASK-006 Phase 2). By default it records
+ * every `evaluate` call in `evaluateCalls` and returns the card unchanged (no
+ * auto-move), so the pre-existing activity tests see no behavior change. A
+ * custom engine can be supplied to exercise auto-move / throwing behavior.
+ */
+function makeRuleEngine(impl?: RuleEngine): { ruleEngine: RuleEngine; evaluateCalls: Card[] } {
+  const evaluateCalls: Card[] = [];
+  const ruleEngine: RuleEngine = {
+    async evaluate(card: Card) {
+      evaluateCalls.push({ ...card });
+      return impl ? impl.evaluate(card) : card;
+    },
+  };
+  return { ruleEngine, evaluateCalls };
+}
+
+/**
+ * The `AppDeps` fields these route tests never exercise directly, but which
+ * `createApp` requires to construct the (unrelated) activity/rules/webhooks
+ * routers. Kept as throwaway stubs so the whole app wires up.
+ */
+const unusedDeps = {
+  activityStreamConfig: { backfillLimit: 50, heartbeatMs: 15000 },
+  rulesRepo: {
+    create: async () => {
+      throw new Error('not used');
+    },
+    findByBoard: async () => [],
+    findById: async () => null,
+    update: async () => null,
+    delete: async () => false,
+    findEnabledByBoard: async () => [],
+  },
+  webhooksRepo: {
+    recordExecution: async () => {
+      throw new Error('not used');
+    },
+    createDelivery: async () => {
+      throw new Error('not used');
+    },
+    updateDelivery: async () => null,
+    markDelivered: async () => null,
+    markFailed: async () => null,
+    markExhausted: async () => null,
+    listTriggerExecutions: async () => [],
+    listDeliveries: async () => [],
+    findDeliveryById: async () => null,
+    findNonTerminalDeliveries: async () => [],
+  },
+} as unknown as {
+  activityStreamConfig: ActivityStreamConfig;
+  rulesRepo: RulesRepository;
+  webhooksRepo: WebhooksRepository;
+};
+
+function makeApp(engine?: RuleEngine) {
   const { boardsRepo, cardsRepo } = makeRepos();
   const { activityRepo, records: activityRecords } = makeActivityRepo();
   const { activityEmitter, emitted: emittedEvents } = makeActivityEmitter();
+  const { ruleEngine, evaluateCalls } = makeRuleEngine(engine);
   const app = createApp({
     checkDb: async () => true,
     boardsRepo,
     cardsRepo,
     activityRepo,
     activityEmitter,
+    ruleEngine,
+    ...unusedDeps,
   });
-  return { app, boardsRepo, activityRepo, activityEmitter, activityRecords, emittedEvents };
+  return {
+    app,
+    boardsRepo,
+    activityRepo,
+    activityEmitter,
+    activityRecords,
+    emittedEvents,
+    evaluateCalls,
+  };
 }
 
 /** Seed a board and return its id (cards need a real board_id to pass the FK check). */
@@ -458,6 +531,8 @@ describe('Card CRUD routes', () => {
         cardsRepo: throwingCardsRepo,
         activityRepo,
         activityEmitter,
+        ruleEngine: { evaluate: async (card) => card },
+        ...unusedDeps,
       });
       const res = await request(app).get('/cards');
       expect(res.status).toBe(500);
@@ -607,6 +682,8 @@ describe('Card CRUD routes', () => {
         cardsRepo,
         activityRepo: failingActivityRepo,
         activityEmitter,
+        ruleEngine: { evaluate: async (card) => card },
+        ...unusedDeps,
       });
       const boardId = await seedBoard(app);
       const created = await request(app)
@@ -620,6 +697,100 @@ describe('Card CRUD routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('done');
       expect(emitted).toHaveLength(0);
+    });
+  });
+
+  /**
+   * TASK-006 Phase 2 — rule-engine integration on `PATCH /cards/:id`. The
+   * engine is injected as a stub `RuleEngine` (per the algorithm-doc Test
+   * Strategy): assert (a) the response reflects the engine's FINAL status, (b)
+   * `evaluate` is invoked with the post-transition card only inside the
+   * real-transition gate, (c) a thrown `evaluate` still yields 200 with the
+   * manual card, and (d) the manual activity row is tagged `triggered_by:'manual'`.
+   */
+  describe('Rule-engine integration on PATCH /cards/:id (TASK-006 Phase 2)', () => {
+    it('AC-HAPPY-2: the response reflects the engine\'s FINAL status, not the client-requested one', async () => {
+      // Client requests in_progress; the engine auto-moves the card to done.
+      const autoMoveEngine: RuleEngine = {
+        async evaluate(card: Card) {
+          return { ...card, status: 'done' };
+        },
+      };
+      const { app } = makeApp(autoMoveEngine);
+      const boardId = await seedBoard(app);
+      const created = await request(app).post('/cards').send({ board_id: boardId, title: 'Flow' });
+
+      const res = await request(app).patch(`/cards/${created.body.id}`).send({ status: 'in_progress' });
+
+      expect(res.status).toBe(200);
+      // The engine's terminal status is what the caller observes.
+      expect(res.body.status).toBe('done');
+    });
+
+    it('invokes evaluate exactly once, with the post-transition card, inside the real-transition gate', async () => {
+      const { app, evaluateCalls } = makeApp();
+      const boardId = await seedBoard(app);
+      const created = await request(app).post('/cards').send({ board_id: boardId, title: 'Move me' });
+
+      await request(app).patch(`/cards/${created.body.id}`).send({ status: 'in_progress' });
+
+      expect(evaluateCalls).toHaveLength(1);
+      expect(evaluateCalls[0]).toMatchObject({
+        id: created.body.id,
+        board_id: boardId,
+        status: 'in_progress', // the post-transition (manually-applied) status
+      });
+    });
+
+    it('does NOT invoke evaluate on a no-op (same-status) PATCH', async () => {
+      const { app, evaluateCalls } = makeApp();
+      const boardId = await seedBoard(app);
+      const created = await request(app)
+        .post('/cards')
+        .send({ board_id: boardId, title: 'Idle', status: 'todo' });
+
+      await request(app).patch(`/cards/${created.body.id}`).send({ status: 'todo' });
+
+      expect(evaluateCalls).toHaveLength(0);
+    });
+
+    it('does NOT invoke evaluate on a non-status-only PATCH', async () => {
+      const { app, evaluateCalls } = makeApp();
+      const boardId = await seedBoard(app);
+      const created = await request(app).post('/cards').send({ board_id: boardId, title: 'Rename me' });
+
+      await request(app).patch(`/cards/${created.body.id}`).send({ title: 'Renamed' });
+
+      expect(evaluateCalls).toHaveLength(0);
+    });
+
+    it('AC-ERROR-3: a THROWING engine still yields 200 with the manually-applied card', async () => {
+      const throwingEngine: RuleEngine = {
+        async evaluate() {
+          throw new Error('engine blew up');
+        },
+      };
+      const { app } = makeApp(throwingEngine);
+      const boardId = await seedBoard(app);
+      const created = await request(app).post('/cards').send({ board_id: boardId, title: 'Resilient' });
+
+      const res = await request(app).patch(`/cards/${created.body.id}`).send({ status: 'in_progress' });
+
+      // The caller's PATCH is unaffected by the engine defect (route-level fail-safe).
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('in_progress');
+    });
+
+    it('AC-ASYNC-1: the manual activity row is tagged triggered_by:\'manual\'', async () => {
+      const { app, activityRecords } = makeApp();
+      const boardId = await seedBoard(app);
+      const created = await request(app).post('/cards').send({ board_id: boardId, title: 'Tagged' });
+
+      await request(app).patch(`/cards/${created.body.id}`).send({ status: 'in_progress' });
+
+      expect(activityRecords).toHaveLength(1);
+      expect(activityRecords[0].triggered_by).toBe('manual');
+      expect(activityRecords[0].rule_id ?? null).toBeNull();
     });
   });
 });
