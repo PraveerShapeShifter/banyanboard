@@ -312,7 +312,7 @@ logger).
   - `src/rules/`: `rules.types.ts`, `rules.validation.ts` (incl. `webhook_url` + self-loop checks), `rules.repository.ts` (`PostgresRulesRepository` + interface, incl. `findEnabledByBoard` ordered `id ASC`), `rules.routes.ts` (`createRulesRouter`, board_id in body, `?board_id=` filter, FK-existence check via `boardsRepo.findById`)
   - `src/webhooks/`: `webhooks.types.ts`, `webhooks.repository.ts` (`TriggerExecutionsRepository` + `WebhookDeliveriesRepository`, or a combined `WebhooksRepository` — boundary confirmed in webhook creative), `webhooks.routes.ts` (`GET /trigger-executions`, `GET /webhook-deliveries`, `GET /webhook-deliveries/:id`)
   - Mount `createRulesRouter` + the webhooks read router in `src/app.ts`; wire repos in `src/server.ts`
-- [ ] **Phase 2 — Trigger evaluation engine + card PATCH integration + activity distinguishability** (AC-HAPPY-2, AC-ERROR-1, AC-ERROR-3, AC-ASYNC-1, AC-ASYNC-2)
+- [x] **Phase 2 — Trigger evaluation engine + card PATCH integration + activity distinguishability** (AC-HAPPY-2, AC-ERROR-1, AC-ERROR-3, AC-ASYNC-1, AC-ASYNC-2) ✅ COMPLETE (2026-07-15): CardRuleEngine (visited-status Set, MAX_HOPS=3, first-match, fail-safe), per-hop trigger_executions + activity triggered_by/rule_id, PATCH integration, NoopWebhookDispatcher seam; 203/203 tests, tsc clean
   - `src/rules/rules.engine.ts`: evaluate a card's post-update state against the board's enabled rules; apply the target-status move; **bounded, terminating** pass (visited-status `Set` + `MAX_HOPS=3`, first-match-wins by `id`, per frozen algorithm); fail-safe (log + never crash/500 the card PATCH, mirroring the activity try/catch); **record a `trigger_executions` row per firing**, and **hand each `webhook_url`-bearing firing to the injected `WebhookDispatcher`** (the dispatcher creates the `pending` delivery row synchronously; the POST is Phase 3)
   - `RecordActivityInput` + `ActivityRepository.record` gain `triggered_by`/`rule_id`; manual call site tags `'manual'`; ensure `triggered_by`/`rule_id` flow through `ActivityEmitter` → SSE payload (folds the former Phase 3 — activity distinguishability, verified end-to-end)
   - Hook `ruleEngine` into `PATCH /cards/:id` (`src/cards/cards.routes.ts`) after the FEAT-005 capture block; response reflects final status; a slow/failing webhook must not delay it
@@ -379,11 +379,12 @@ Webhook + UI addition (COMPLETE 2026-07-15):
 
 ## Execution State
 
-**Build Status**: RUNNING (Phase 1 complete → Phase 2 next)
-**Current Phase**: BUILD — Phase 1 of 4 COMPLETE
-**Current Step**: Phase 1 (Data model + CRUD API) done & verified (181/181 tests, tsc clean, committed). Next: Phase 2 (engine + PATCH integration + activity distinguishability).
-**Last Completed**: BUILD Phase 1 — migrations 004/005, src/rules/, src/webhooks/ read routes, app/server wiring; +63 tests
+**Build Status**: RUNNING (Phase 2 complete → Phase 3 next)
+**Current Phase**: BUILD — Phase 2 of 4 COMPLETE
+**Current Step**: Phase 2 (engine + PATCH integration + activity distinguishability) done & verified (203/203 tests, tsc clean, committed). Next: Phase 3 (webhook delivery + retry — HttpWebhookDispatcher replaces NoopWebhookDispatcher).
+**Last Completed**: BUILD Phase 2 — CardRuleEngine, activity triggered_by/rule_id, trigger_executions per hop, cards PATCH integration, NoopWebhookDispatcher seam; +22 tests
 **Can Resume**: YES
+**Phase 2 note (for Phase 3)**: engine calls `webhookDispatcher.dispatch(execution, rule, payloadData)` per firing when rule.webhook_url set; Phase 3 replaces NoopWebhookDispatcher with HttpWebhookDispatcher that creates the pending webhook_deliveries row + runs POST/retry lifecycle. trigger_executions currently always 'executed' on an applied hop (engine doesn't emit 'failed' executions this build).
 **Run parameters (user-decided 2026-07-15)**: autonomous run committing each phase; SSRF = http(s)-validation-only (accepted risk); WEBHOOK_MAX_ATTEMPTS = 3 total.
 **Phase 1 note (for Phase 2/3)**: WebhooksRepository method names as implemented — `recordExecution`, `createDelivery`, `updateDelivery`/`markDelivered`/`markFailed`/`markExhausted`, `listTriggerExecutions`, `listDeliveries`, `findDeliveryById`, `findNonTerminalDeliveries`. Engine/dispatcher must consume these exact names.
 **Run parameters (user-decided 2026-07-15)**: autonomous run committing each phase; SSRF = http(s)-validation-only (accepted risk); WEBHOOK_MAX_ATTEMPTS = 3 total.

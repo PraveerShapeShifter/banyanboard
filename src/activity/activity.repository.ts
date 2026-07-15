@@ -24,7 +24,8 @@ export interface ActivityRepository {
 }
 
 /** The full column projection, kept identical across every read for a stable row shape. */
-const COLUMNS = 'id, board_id, card_id, card_title, from_status, to_status, created_at';
+const COLUMNS =
+  'id, board_id, card_id, card_title, from_status, to_status, triggered_by, rule_id, created_at';
 
 /** Map a raw `pg` row onto the `CardActivity` domain shape (guards against stray columns). */
 function toActivity(r: {
@@ -34,6 +35,8 @@ function toActivity(r: {
   card_title: string;
   from_status: CardActivity['from_status'];
   to_status: CardActivity['to_status'];
+  triggered_by: CardActivity['triggered_by'];
+  rule_id: number | null;
   created_at: Date;
 }): CardActivity {
   return {
@@ -43,6 +46,8 @@ function toActivity(r: {
     card_title: r.card_title,
     from_status: r.from_status,
     to_status: r.to_status,
+    triggered_by: r.triggered_by,
+    rule_id: r.rule_id,
     created_at: r.created_at,
   };
 }
@@ -61,9 +66,17 @@ export class PostgresActivityRepository implements ActivityRepository {
 
   async record(input: RecordActivityInput): Promise<CardActivity> {
     const result = await this.pool.query(
-      `INSERT INTO card_activity (board_id, card_id, card_title, from_status, to_status)
-       VALUES ($1, $2, $3, $4, $5) RETURNING ${COLUMNS}`,
-      [input.board_id, input.card_id, input.card_title, input.from_status, input.to_status],
+      `INSERT INTO card_activity (board_id, card_id, card_title, from_status, to_status, triggered_by, rule_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ${COLUMNS}`,
+      [
+        input.board_id,
+        input.card_id,
+        input.card_title,
+        input.from_status,
+        input.to_status,
+        input.triggered_by ?? 'manual',
+        input.rule_id ?? null,
+      ],
     );
     return toActivity(result.rows[0]);
   }

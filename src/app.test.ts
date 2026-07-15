@@ -7,6 +7,7 @@ import type { ActivityRepository } from './activity/activity.repository';
 import type { ActivityEmitter } from './activity/activity.emitter';
 import type { ActivityStreamConfig } from './activity/activity.routes';
 import type { RulesRepository } from './rules/rules.repository';
+import type { RuleEngine } from './rules/rules.engine';
 import type { WebhooksRepository } from './webhooks/webhooks.repository';
 
 /** Minimal stub — these tests never exercise the boards routes. */
@@ -73,6 +74,11 @@ const stubRulesRepo: RulesRepository = {
   findEnabledByBoard: async () => [],
 };
 
+/** Minimal stub — TASK-006 Phase 2 addition; these tests never trigger auto-moves. */
+const stubRuleEngine: RuleEngine = {
+  evaluate: async (card) => card,
+};
+
 /** Minimal stub — TASK-006 Phase 1 addition; these tests never exercise the read routes' data. */
 const stubWebhooksRepo: WebhooksRepository = {
   recordExecution: async () => {
@@ -100,6 +106,7 @@ describe('app', () => {
     activityEmitter: stubActivityEmitter,
     activityStreamConfig: stubActivityStreamConfig,
     rulesRepo: stubRulesRepo,
+    ruleEngine: stubRuleEngine,
     webhooksRepo: stubWebhooksRepo,
   });
 
