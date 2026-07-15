@@ -50,6 +50,16 @@ Chronological record of completed phases and tasks. Updated by `/banyan-archive`
 
 ---
 
+## Task Archive: TASK-006
+
+**Task**: Card Workflow Automation (FEAT-006)
+**Status**: ✅ ARCHIVED
+**Date**: 2026-07-16
+**Archive**: `memory-bank/archive/archive-TASK-006.md`
+**Disposition**: local-merge → `main` (Archive Strategy per projectbrief.md; projectbrief still records `Provider: None` though an `origin` remote exists — strategy remains local-merge, main not pushed). Level 3, 4 build phases, no worktree (work directly on `feature/FEAT-006-card-workflow-automation`). Rule-based card workflow automation: board-scoped `condition → target_status` rules (`src/rules/`), a synchronous bounded fail-safe `CardRuleEngine` on the `PATCH /cards/:id` path (visited-status Set + `MAX_HOPS=3`, first-match-wins), FEAT-005 activity tagging (`triggered_by`/`rule_id`), plus the mid-task product addition: optional asynchronous webhook delivery with bounded retry (`src/webhooks/` — fire-and-forget `HttpWebhookDispatcher`, DB-row source of truth, `pending→delivered|failed→exhausted`, delivery status tracked separately from trigger-execution status) and a Board → Automation UI (`frontend/src/pages/AutomationPage/*`, route `/boards/:id/automation`). All 10 ACs; 216/216 backend + 100/100 frontend tests (316 total), zero regressions; 70 files, +10,265 lines. Notable: the frozen-creative mechanism absorbed a genuine mid-task scope reversal (webhook+UI) by reopening creative and restructuring into 4 phases with no rework. Learned-rule consolidation: 10 files (at cap), no merges/expiry/pruning (`async-dispatch` + `security` created + `api-design` promoted low→medium during reflection). Deferred follow-ups: `trigger_executions.status='failed'` path code-unreachable (produce + cover it); webhook restart-durability re-drive provisioned-not-built; SSRF private/loopback blocking (accepted risk); **5th consecutive task with no task-indexed session logs → escalate to `/banyan-init`/`/banyan-upgrade`**; API-wide coded-error rollout; human live `docker compose up` + real-DB/webhook round-trip.
+
+---
+
 ## Task Archive: TASK-005
 
 **Task**: Realtime Activity Feed (FEAT-005)
