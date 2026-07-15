@@ -1,7 +1,7 @@
 # TASK-006: Card Workflow Automation
 
 **Complexity**: Level 3 (inherited from FEAT-006)
-**Status**: CREATIVE_COMPLETE (auto-move core) · CREATIVE_PENDING (webhook delivery + UI panel — product addition 2026-07-15)
+**Status**: CREATIVE_COMPLETE (auto-move + webhook + UI all frozen 2026-07-15) → ready for BUILD Phase 1
 **Roadmap**: FEAT-006
 **Branch**: feature/FEAT-006-card-workflow-automation
 **Worktree**: N/A
@@ -342,18 +342,28 @@ logger).
 
 ## Creative Phases
 
-Level 3 with LOW-confidence spec fields → **creative REQUIRED**. The two auto-move
-creative phases are COMPLETE (2026-07-15). The **2026-07-15 product addition (webhook
-delivery + UI) reopens creative** with three new sub-phases — **PENDING**, gating Phases 3–4.
+Level 3 with LOW-confidence spec fields → **creative REQUIRED**. All FIVE creative
+sub-phases are COMPLETE (2026-07-15): the two auto-move phases, plus the three added
+by the 2026-07-15 webhook+UI product addition. Build gate is unblocked for all phases.
 
 Auto-move core (COMPLETE):
 - [x] **Architecture Design** (`creative-architecture-agent`) → COMPLETE — `memory-bank/creative/TASK-006-card-workflow-automation-architecture.md`
 - [x] **Algorithm Design** (`creative-algorithm-agent`) → COMPLETE — `memory-bank/creative/TASK-006-card-workflow-automation-algorithm.md`
 
-Webhook + UI addition (PENDING — run before Phases 3–4):
-- [ ] **Webhook Architecture Design** (`creative-architecture-agent`) → PENDING — async delivery mechanism + `WebhookDispatcher` seam placement + module boundary + `webhook_deliveries.payload` storage shape + restart durability + **SSRF policy for `webhook_url`**. Gates Phase 3.
-- [ ] **Webhook Retry Algorithm Design** (`creative-algorithm-agent`) → PENDING — retry count/interpretation, backoff schedule (fixed vs exponential), timeout defaults, and the delivery lifecycle state machine. Gates Phase 3.
-- [ ] **Automation-tab UI/UX Design** (`creative-uiux-agent`) → PENDING — Board Settings entry point, rule form, rule list, execution/delivery history, empty/error/loading states, against `ux-patterns.md` + existing `frontend/` components. Gates Phase 4.
+Webhook + UI addition (COMPLETE 2026-07-15):
+- [x] **Webhook Architecture Design** (`creative-architecture-agent`) → COMPLETE — `memory-bank/creative/TASK-006-webhook-architecture.md`
+- [x] **Webhook Retry Algorithm Design** (`creative-algorithm-agent`) → COMPLETE — `memory-bank/creative/TASK-006-webhook-retry-algorithm.md`
+- [x] **Automation-tab UI/UX Design** (`creative-uiux-agent`) → COMPLETE — `memory-bank/creative/TASK-006-automation-ui-uiux.md`
+
+### Frozen Webhook + UI Decisions (build against these)
+- **Async mechanism**: engine synchronously records the `trigger_executions` row per firing (on-path, bounded by `MAX_HOPS`) and, only when `webhook_url` is set, creates the `pending` `webhook_deliveries` row; then a **fire-and-forget `WebhookDispatcher.dispatch()` (returns `void`)** runs the POST + `setTimeout(30s)` retries OFF-path. DB row is source of truth; zero network latency on the card PATCH.
+- **Retry state machine**: re-entrant `deliver(deliveryId)` — 1 `fetch` per call, `attempts := attempts+1`; 2xx→`delivered`; failure with `attempts<3`→`failed`+arm 30s retry; `attempts==3`→`exhausted`. **3 total attempts (1+2 retries)**; timeline t=0/30s/60s. `AbortController` 5s timeout; non-2xx→`WEBHOOK_NON_2XX`, timeout/network→`WEBHOOK_TIMEOUT`, terminal→`WEBHOOK_EXHAUSTED`. Payload built ONCE at fire time, byte-stable across attempts (`occurred_at` never drifts); at-least-once, receivers dedupe.
+- **Storage**: `payload TEXT NOT NULL` (`JSON.stringify` snapshot); JSONB rejected. Migration `db/init/005_workflow_webhooks.sql`.
+- **Module/seam**: new `src/webhooks/` (`webhooks.types.ts`, `webhooks.repository.ts` = combined `WebhooksRepository`, `webhooks.dispatcher.ts`, `webhooks.routes.ts` — read-only, no validation file). `WebhookDispatcher` mirrors `ActivityEmitter`, constructed in `server.ts`, injected into `CardRuleEngine` (which also gains `webhooksRepo`). `webhooksRepo` in `AppDeps`; dispatcher is engine-internal.
+- **SSRF**: absolute `http(s)` only (`400 INVALID_RULE`); private/loopback/metadata ranges NOT blocked — **documented ACCEPTED RISK** (internal-trusted-users MVP); range-block is a non-breaking future path.
+- **Restart durability**: in-flight retry timers lost on restart — accepted MVP limitation; startup re-drive of non-terminal deliveries provisioned (`webhook_deliveries_status_idx` + `findNonTerminalDeliveries`) but NOT built.
+- **Config (new env vars)**: `WEBHOOK_TIMEOUT_MS`=5000, `WEBHOOK_MAX_ATTEMPTS`=3, `WEBHOOK_RETRY_BACKOFF_MS`=30000; Node global `fetch` + `AbortController`, no new dependency; timers `.unref()`; logs `rules.webhook_delivered`/`webhook_failed`/`webhook_exhausted` (never log payload body/URL query).
+- **UI**: route `/boards/:id/automation` via a Board/Automation nav on `BoardHeader`; new mutation seam `mutateJson`/`MutationResult`/`CodedError` in `frontend/src/api/client.ts` (SPA is GET-only today); `RuleForm` mirrors coded errors inline; `role="switch"` optimistic toggle; hand-rolled `role="alertdialog"` `ConfirmDialog` (NOT `window.confirm`); master-detail history via `useApiResource` + manual Refresh (no delivery SSE); `useRules(boardId)` hook mirrors `useActivityStream` discipline.
 
 ### Frozen Creative Decisions (build against these)
 - **Condition storage**: normalized typed columns `condition_field` / `condition_operator` / `condition_value` (each `VARCHAR` + `CHECK`), exposed on the wire as nested `condition: { field, operator, value }` via a `toRule()` projection. **Not JSONB** (rejected as a premature first-in-codebase precedent; simplicity-first).
@@ -369,12 +379,12 @@ Webhook + UI addition (PENDING — run before Phases 3–4):
 
 ## Execution State
 
-**Build Status**: IDLE
-**Current Phase**: CREATIVE (reopened by 2026-07-15 product addition)
-**Current Step**: Auto-move creative frozen. Phase 1 (data model + CRUD) is buildable now. Phases 3–4 BLOCKED on the new webhook + UI/UX creative sub-phases (see Creative Phases).
-**Last Completed**: Spec update for webhook delivery + UI (AC-HAPPY-3, AC-ERROR-4, AC-ASYNC-3; 4-phase roadmap; test strategy)
+**Build Status**: IDLE (about to start Phase 1)
+**Current Phase**: CREATIVE → BUILD (all 5 creative sub-phases frozen)
+**Current Step**: Creative complete for all phases. Phase gate unblocked. Autonomous build of Phases 1→4 authorized (commit each phase; inter-phase human review waived per user).
+**Last Completed**: CREATIVE — webhook architecture + webhook retry algorithm + automation-tab UI/UX (3 docs), reconciled and frozen
 **Can Resume**: NO
-**Recommended next**: `/banyan-creative TASK-006` for the three PENDING sub-phases (webhook architecture, webhook retry algorithm, automation-tab UI/UX) before building Phase 3–4; Phase 1–2 may proceed against the frozen auto-move decisions.
+**Run parameters (user-decided 2026-07-15)**: autonomous run committing each phase; SSRF = http(s)-validation-only (accepted risk); WEBHOOK_MAX_ATTEMPTS = 3 total.
 
 ### Active Sub-Agents
 - Architecture Design (condition storage + evaluation timing): COMPLETE → memory-bank/creative/TASK-006-card-workflow-automation-architecture.md
