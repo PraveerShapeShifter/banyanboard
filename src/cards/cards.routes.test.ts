@@ -5,6 +5,9 @@ import type { BoardsRepository } from '../boards/boards.repository';
 import type { Board, CreateBoardInput, UpdateBoardInput } from '../boards/boards.types';
 import type { CardsRepository } from './cards.repository';
 import type { Card, CreateCardInput, UpdateCardInput } from './cards.types';
+import type { ActivityRepository } from '../activity/activity.repository';
+import type { CardActivity, RecordActivityInput } from '../activity/activity.types';
+import type { ActivityEmitter } from '../activity/activity.emitter';
 
 /**
  * Supertest-driven integration tests for the Card CRUD HTTP layer, exercising
@@ -12,7 +15,12 @@ import type { Card, CreateCardInput, UpdateCardInput } from './cards.types';
  * handling, the board_id-existence check) via `createApp(deps)` with stubbed
  * repositories — no live database, mirroring the boards module's convention.
  *
- * Covers AC-ENTRY-1, AC-HAPPY-1..7 (including cascade), AC-ERROR-1..4.
+ * Covers AC-ENTRY-1, AC-HAPPY-1..7 (including cascade), AC-ERROR-1..4, and
+ * (TASK-005 Phase 1) activity capture on the `PATCH /cards/:id` transition
+ * path — AC-VERIFY-1 (no-op / non-status PATCH captures nothing) and
+ * AC-VERIFY-2 (a real transition captures exactly one well-formed record and
+ * emits exactly one event), per
+ * `memory-bank/creative/TASK-005-realtime-activity-feed-architecture.md`.
  *
  * The boards and cards stubs share a backing store so that AC-HAPPY-7 can be
  * verified at the orchestration layer: `DELETE /boards/:id` cascades to the
@@ -101,12 +109,18 @@ function makeRepos(): { boardsRepo: BoardsRepository; cardsRepo: CardsRepository
     async update(id: number, input: UpdateCardInput) {
       const c = cards.get(id);
       if (!c) return null;
+      // Captured before mutation so the caller (the PATCH route's capture
+      // hook) can detect a real status transition — mirrors the atomic
+      // `RETURNING`-CTE contract `cards.repository.update()` gains per the
+      // architecture decision (Q2): the update returns the new row *and* the
+      // prior status in one round-trip.
+      const previousStatus = c.status;
       if (input.title !== undefined) c.title = input.title;
       if (input.description !== undefined) c.description = input.description;
       if (input.status !== undefined) c.status = input.status;
       if (input.due_date !== undefined) c.due_date = input.due_date != null ? new Date(input.due_date) : null;
       c.updated_at = now();
-      return { ...c };
+      return { card: { ...c }, previousStatus };
     },
     async delete(id: number) {
       return cards.delete(id);
@@ -114,6 +128,58 @@ function makeRepos(): { boardsRepo: BoardsRepository; cardsRepo: CardsRepository
   };
 
   return { boardsRepo, cardsRepo };
+}
+
+/**
+ * A stateful in-memory `ActivityRepository` stub. Records every `record()`
+ * call in `records` (in insertion order) so capture tests can assert exact
+ * persistence — mirrors the stateful-stub convention used for boards/cards.
+ */
+function makeActivityRepo(): { activityRepo: ActivityRepository; records: CardActivity[] } {
+  const records: CardActivity[] = [];
+  let nextId = 1;
+
+  const activityRepo: ActivityRepository = {
+    async record(input: RecordActivityInput): Promise<CardActivity> {
+      const event: CardActivity = {
+        id: nextId++,
+        board_id: input.board_id,
+        card_id: input.card_id,
+        card_title: input.card_title,
+        from_status: input.from_status,
+        to_status: input.to_status,
+        created_at: new Date(),
+      };
+      records.push(event);
+      return { ...event };
+    },
+    async findRecentByBoard(boardId: number, limit: number) {
+      return records.filter((r) => r.board_id === boardId).slice(-limit);
+    },
+    async findAfter(boardId: number, cursorId: number, limit: number) {
+      return records.filter((r) => r.board_id === boardId && r.id > cursorId).slice(0, limit);
+    },
+  };
+
+  return { activityRepo, records };
+}
+
+/**
+ * A stub `ActivityEmitter` that records every `emit()` call in `emitted` so
+ * capture tests can assert fan-out happened exactly once, without exercising
+ * real subscriber delivery (that is Phase 2 scope).
+ */
+function makeActivityEmitter(): { activityEmitter: ActivityEmitter; emitted: CardActivity[] } {
+  const emitted: CardActivity[] = [];
+
+  const activityEmitter: ActivityEmitter = {
+    subscribe: () => () => {},
+    emit(_boardId: number, event: CardActivity) {
+      emitted.push(event);
+    },
+  };
+
+  return { activityEmitter, emitted };
 }
 
 /** A cards repository whose every method rejects — simulates a DB outage (AC-ERROR-4). */
@@ -137,7 +203,16 @@ const throwingCardsRepo: CardsRepository = {
 
 function makeApp() {
   const { boardsRepo, cardsRepo } = makeRepos();
-  return { app: createApp({ checkDb: async () => true, boardsRepo, cardsRepo }), boardsRepo };
+  const { activityRepo, records: activityRecords } = makeActivityRepo();
+  const { activityEmitter, emitted: emittedEvents } = makeActivityEmitter();
+  const app = createApp({
+    checkDb: async () => true,
+    boardsRepo,
+    cardsRepo,
+    activityRepo,
+    activityEmitter,
+  });
+  return { app, boardsRepo, activityRepo, activityEmitter, activityRecords, emittedEvents };
 }
 
 /** Seed a board and return its id (cards need a real board_id to pass the FK check). */
@@ -375,12 +450,176 @@ describe('Card CRUD routes', () => {
 
     it('returns 500 with a generic JSON error when the repository throws, leaking no internals', async () => {
       const { boardsRepo } = makeRepos();
-      const app = createApp({ checkDb: async () => true, boardsRepo, cardsRepo: throwingCardsRepo });
+      const { activityRepo } = makeActivityRepo();
+      const { activityEmitter } = makeActivityEmitter();
+      const app = createApp({
+        checkDb: async () => true,
+        boardsRepo,
+        cardsRepo: throwingCardsRepo,
+        activityRepo,
+        activityEmitter,
+      });
       const res = await request(app).get('/cards');
       expect(res.status).toBe(500);
       expect(res.body.error).toBeTruthy();
       expect(JSON.stringify(res.body)).not.toContain('connection refused');
       expect(JSON.stringify(res.body)).not.toContain('5432');
+    });
+  });
+
+  /**
+   * TASK-005 Phase 1 — activity capture wired into `PATCH /cards/:id`.
+   * Per the architecture decision (Q2), capture is orchestrated in this route
+   * handler: `cardsRepo.update()` returns `{ card, previousStatus }` in one
+   * round-trip; a real transition (`previousStatus !== card.status`) persists
+   * exactly one `card_activity` record and emits exactly one event; a no-op
+   * or non-status-only PATCH persists/emits nothing.
+   */
+  describe('Activity capture on PATCH /cards/:id status transitions', () => {
+    it('AC-VERIFY-2: a real status transition persists exactly one well-formed record and emits exactly one event', async () => {
+      const { app, activityRecords, emittedEvents } = makeApp();
+      const boardId = await seedBoard(app);
+      const created = await request(app)
+        .post('/cards')
+        .send({ board_id: boardId, title: 'Deploy pipeline' });
+
+      const res = await request(app)
+        .patch(`/cards/${created.body.id}`)
+        .send({ status: 'in_progress' });
+
+      expect(res.status).toBe(200);
+      expect(activityRecords).toHaveLength(1);
+      expect(activityRecords[0]).toMatchObject({
+        board_id: boardId,
+        card_id: created.body.id,
+        card_title: 'Deploy pipeline',
+        from_status: 'todo',
+        to_status: 'in_progress',
+      });
+      expect(typeof activityRecords[0].id).toBe('number');
+      expect(activityRecords[0].created_at).toBeInstanceOf(Date);
+
+      expect(emittedEvents).toHaveLength(1);
+      expect(emittedEvents[0]).toMatchObject({
+        board_id: boardId,
+        card_id: created.body.id,
+        from_status: 'todo',
+        to_status: 'in_progress',
+      });
+    });
+
+    it('AC-VERIFY-1: a no-op PATCH sending the same status persists nothing and emits nothing', async () => {
+      const { app, activityRecords, emittedEvents } = makeApp();
+      const boardId = await seedBoard(app);
+      const created = await request(app)
+        .post('/cards')
+        .send({ board_id: boardId, title: 'Stable', status: 'todo' });
+
+      const res = await request(app).patch(`/cards/${created.body.id}`).send({ status: 'todo' });
+
+      expect(res.status).toBe(200);
+      expect(activityRecords).toHaveLength(0);
+      expect(emittedEvents).toHaveLength(0);
+    });
+
+    it('AC-VERIFY-1: a PATCH changing only non-status fields persists nothing and emits nothing', async () => {
+      const { app, activityRecords, emittedEvents } = makeApp();
+      const boardId = await seedBoard(app);
+      const created = await request(app)
+        .post('/cards')
+        .send({ board_id: boardId, title: 'Keep still' });
+
+      const res = await request(app)
+        .patch(`/cards/${created.body.id}`)
+        .send({ title: 'Renamed', description: 'updated text', due_date: '2026-09-01' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.title).toBe('Renamed');
+      expect(activityRecords).toHaveLength(0);
+      expect(emittedEvents).toHaveLength(0);
+    });
+
+    it('grounds two distinct transitions in two distinct, correctly-valued records (stub-detection)', async () => {
+      const { app, activityRecords } = makeApp();
+      const boardId = await seedBoard(app);
+      const cardX = await request(app).post('/cards').send({ board_id: boardId, title: 'Card X' });
+      const cardY = await request(app)
+        .post('/cards')
+        .send({ board_id: boardId, title: 'Card Y', status: 'in_progress' });
+
+      await request(app).patch(`/cards/${cardX.body.id}`).send({ status: 'in_progress' });
+      await request(app).patch(`/cards/${cardY.body.id}`).send({ status: 'done' });
+
+      expect(activityRecords).toHaveLength(2);
+      const [eventX, eventY] = activityRecords;
+      expect(eventX).toMatchObject({
+        card_id: cardX.body.id,
+        card_title: 'Card X',
+        from_status: 'todo',
+        to_status: 'in_progress',
+      });
+      expect(eventY).toMatchObject({
+        card_id: cardY.body.id,
+        card_title: 'Card Y',
+        from_status: 'in_progress',
+        to_status: 'done',
+      });
+      expect(eventX).not.toEqual(eventY);
+      const validStatuses = ['todo', 'in_progress', 'done'];
+      for (const event of activityRecords) {
+        expect(validStatuses).toContain(event.from_status);
+        expect(validStatuses).toContain(event.to_status);
+      }
+    });
+
+    it('does not alter the PATCH response contract when a transition is captured', async () => {
+      const { app } = makeApp();
+      const boardId = await seedBoard(app);
+      const created = await request(app)
+        .post('/cards')
+        .send({ board_id: boardId, title: 'Task', description: 'keep me' });
+
+      const res = await request(app).patch(`/cards/${created.body.id}`).send({ status: 'in_progress' });
+
+      expect(res.status).toBe(200);
+      expect(Object.keys(res.body).sort()).toEqual(
+        ['id', 'board_id', 'title', 'description', 'status', 'due_date', 'created_at', 'updated_at'].sort(),
+      );
+      expect(res.body.status).toBe('in_progress');
+      expect(res.body.title).toBe('Task');
+      expect(res.body.description).toBe('keep me');
+    });
+
+    it('AC-VERIFY-3: a failing activity capture never fails the PATCH (fail-safe, persist-first)', async () => {
+      const { boardsRepo, cardsRepo } = makeRepos();
+      const { activityEmitter, emitted } = makeActivityEmitter();
+      // Activity persistence is down, but the card write itself must still succeed.
+      const failingActivityRepo: ActivityRepository = {
+        record: async () => {
+          throw new Error('activity store unavailable');
+        },
+        findRecentByBoard: async () => [],
+        findAfter: async () => [],
+      };
+      const app = createApp({
+        checkDb: async () => true,
+        boardsRepo,
+        cardsRepo,
+        activityRepo: failingActivityRepo,
+        activityEmitter,
+      });
+      const boardId = await seedBoard(app);
+      const created = await request(app)
+        .post('/cards')
+        .send({ board_id: boardId, title: 'Resilient' });
+
+      const res = await request(app).patch(`/cards/${created.body.id}`).send({ status: 'done' });
+
+      // The write path is unaffected: PATCH still returns 200 with the updated card,
+      // and because record() rejected before emit, no event was fanned out.
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('done');
+      expect(emitted).toHaveLength(0);
     });
   });
 });

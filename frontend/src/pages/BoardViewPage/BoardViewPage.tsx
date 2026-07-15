@@ -8,6 +8,7 @@ import ErrorState from '../../components/ErrorState';
 import NotFoundState from '../../components/NotFoundState';
 import BoardHeader from './BoardHeader';
 import Columns from './Columns';
+import ActivityFeed from './ActivityFeed';
 
 interface BoardView {
   board: Board;
@@ -69,6 +70,7 @@ export default function BoardViewPage() {
     <main className="board-view">
       <BoardHeader name={state.data.board.name} />
       <Columns cards={state.data.cards} />
+      <ActivityFeed boardId={id} />
     </main>
   );
 }

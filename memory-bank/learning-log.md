@@ -58,6 +58,32 @@ Chronological record of pattern extraction and consolidation events from task re
 
 ---
 
+## 2026-07-15 - TASK-005 Reflection
+
+### Extracted Patterns
+- **connection-lifecycle** → created `agent-rules/_learned/connection-lifecycle.md` (evidence count: 1) — register `req.on('close')` cleanup before any `await` with an idempotent `closed` flag; subscribe-before-backfill with cursor dedupe + validated `Last-Event-ID` (first realtime/SSE topic)
+- **data-access** → amended `agent-rules/_learned/data-access.md` (evidence count: 3) — atomic old-vs-new via `FROM (SELECT …) AS old` + `RETURNING` subquery instead of SELECT-then-UPDATE. **Promoted low → medium** (crossed threshold 3).
+- **frontend-patterns** → amended `agent-rules/_learned/frontend-patterns.md` (evidence count: 2) — single-seam + status-union discipline extends to a long-lived stream (connecting/open/reconnecting/degraded, reset on key change); decoupled visually-hidden `aria-live` announcer keyed for re-announce + arming heuristic; widened topics to streaming/accessibility
+- **deployment** → amended `agent-rules/_learned/infrastructure.md` (evidence count: 2) — treat each new `db/init/*.sql` as deployment-affecting: init scripts run only on a fresh volume, so document/verify the non-fresh path + add a readiness signal so a missing table fails loudly not silently; widened globs to `db/init/*.sql`, topics to deployment/migrations
+
+### systemPatterns.md Updates
+- None (the three novel architecture patterns — in-process fan-out seam, write-path side-effect capture, SSE push transport with backfill/replay, and the client EventSource-seam + decoupled a11y announcer — were already documented in systemPatterns.md § Recent Architecture Changes by the build Documentation Agent during Phase 1-3 builds; no duplication needed)
+
+### Files
+- Before: 7, After: 8 (connection-lifecycle.md created; still under cap 10)
+
+---
+
+## 2026-07-15 - Consolidation (during TASK-005 archive)
+
+- Files before: 8, Files after: 8
+- Merged: 0 files (no pair >50% topic/glob overlap — `connection-lifecycle` is backend `src/**/*.routes.ts` streaming vs `frontend-patterns` `frontend/src/**`; they share only the `streaming`/`async` topic tags, <50%)
+- Expired: 0 bullets (all evidence within 90 days; earliest 2026-07-10)
+- Promoted: 0 files during consolidation (`data-access` low→medium at ec 3 was applied during TASK-005 reflection extraction, not here)
+- Pruned: 0 excess bullets (all files ≤4 bullets, cap 15)
+
+---
+
 ## 2026-07-13 - Consolidation (during TASK-003 archive)
 
 - Files before: 6, Files after: 6

@@ -21,10 +21,14 @@ Component Name: API Backend
 - Test Framework: Vitest + Supertest
 
 Component Name: Database
-- Path: [TBD — migrations/schema location]
+- Path: db/init/ (numbered SQL init scripts run in order on first container start: 001_boards.sql, 002_cards.sql, 003_card_activity.sql)
 - Language: PostgreSQL (SQL)
-- Test Directory: N/A
+- Test Directory: N/A (repositories are unit-tested over a mocked pg pool; route tests use in-memory stubs — no live DB)
 - Test Framework: N/A
+
+Backend modules under src/: config/ (env, logger), db/ (pg pool), health/, boards/, cards/, activity/ (TASK-005 — activity.types/repository/emitter: card-movement capture + in-process fan-out seam; activity.routes: SSE push transport `GET /activity/stream?board_id=` with backfill + Last-Event-ID replay). New env knobs: `ACTIVITY_BACKFILL_LIMIT` (default 50), `ACTIVITY_HEARTBEAT_MS` (default 15000).
+
+Frontend (TASK-005 Phase 3): `frontend/src/api/activityStream.ts` (the single `EventSource` seam → the SSE endpoint via the Vite `/api` proxy), `hooks/useActivityStream.ts` (connection state machine: connecting/open/reconnecting/degraded, dedupe-by-id newest-first, arming heuristic for the a11y announcer), `pages/BoardViewPage/{ActivityFeed,ActivityFeedItem,ActivityFeedStatus}.tsx` (persistent side panel on the board view), `statusLabels.ts` (shared status→label map, also used by Columns).
 ```
 
 > Exact directory layout is not yet established. Update these paths once the

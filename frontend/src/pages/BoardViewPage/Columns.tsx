@@ -1,12 +1,14 @@
 import type { Card as CardType, CardStatus } from '../../api/types';
+import { STATUS_LABELS } from '../../statusLabels';
 import { groupCardsByStatus } from './groupCardsByStatus';
 import Column from './Column';
 
-// Fixed column order and labels: status value → display label.
+// Fixed column order; labels come from the shared STATUS_LABELS map (also
+// used by the TASK-005 activity feed) so the two surfaces never drift.
 const COLUMNS: ReadonlyArray<{ status: CardStatus; label: string }> = [
-  { status: 'todo', label: 'To Do' },
-  { status: 'in_progress', label: 'In Progress' },
-  { status: 'done', label: 'Done' },
+  { status: 'todo', label: STATUS_LABELS.todo },
+  { status: 'in_progress', label: STATUS_LABELS.in_progress },
+  { status: 'done', label: STATUS_LABELS.done },
 ];
 
 /**
