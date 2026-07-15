@@ -1,7 +1,8 @@
 # TASK-006: Card Workflow Automation
 
 **Complexity**: Level 3 (inherited from FEAT-006)
-**Status**: BUILD_COMPLETE (all 4 phases; backend 216/216 + frontend 100/100 tests; ready for /banyan-reflect)
+**Status**: REFLECTION_COMPLETE (all 4 phases; backend 216/216 + frontend 100/100 tests; ready for /banyan-archive)
+**Reflection**: memory-bank/reflection/reflection-TASK-006.md
 **Roadmap**: FEAT-006
 **Branch**: feature/FEAT-006-card-workflow-automation
 **Worktree**: N/A
@@ -379,11 +380,12 @@ Webhook + UI addition (COMPLETE 2026-07-15):
 
 ## Execution State
 
-**Build Status**: COMPLETE (all 4 phases)
-**Current Phase**: BUILD_COMPLETE — 4 of 4 phases done
-**Current Step**: Phase 4 (Automation-tab UI) done & verified (frontend 100/100, tsc --noEmit clean, vite build OK, committed). ALL PHASES COMPLETE.
-**Last Completed**: BUILD Phase 4 — Automation tab (route, mutation seam, RuleForm, optimistic toggle, ConfirmDialog, history + delivery badges); +65 frontend tests
-**Can Resume**: NO (build finished)
+**Build Status**: RUNNING
+**Current Phase**: REFLECT
+**Current Step**: Step 4 - Git Commit - RUNNING
+**Step Started**: 2026-07-16
+**Last Completed**: Step 3.5 - Pattern Extraction - COMPLETE (4 learnings: created async-dispatch.md + security.md, amended api-design.md [promoted low→medium], folded performance into async-dispatch.md at cap; systemPatterns.md as-built entry added; learning-log + metrics updated)
+**Can Resume**: YES
 **Totals**: backend 216/216 tests + frontend 100/100 tests all passing; backend tsc clean; frontend tsc --noEmit clean + vite build OK.
 **Next**: /banyan-reflect TASK-006, then /banyan-archive TASK-006.
 **Deferred / accepted (documented)**: SSRF = http(s)-only (accepted risk); webhook retry durability across process restart not built (re-drive provisioned via status index + findNonTerminalDeliveries); trigger_executions 'failed' status path not produced by the engine this build; DB-level CHECK/FK constraints exercised via app-level validation, not against a live DB in tests (repo tests stub pg).

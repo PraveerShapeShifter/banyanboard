@@ -63,6 +63,10 @@ When a trigger with webhook configuration fires:
 
 ## Recent Architecture Changes
 
+### 2026-07-16 — Rule-engine seam + fire-and-forget webhook dispatch (TASK-006, as-built)
+- **Pattern**: an injected `CardRuleEngine` seam (mirrors the `ActivityEmitter` idiom — constructed in `server.ts`, added to `AppDeps`, invoked inside the existing `previousStatus !== card.status` gate in `PATCH /cards/:id` after the FEAT-005 capture block) evaluates a card's post-update state against the board's enabled rules **synchronously** and applies auto-moves in a **bounded, terminating** pass (visited-status `Set` + `MAX_HOPS = CARD_STATUSES.length`, first-match-wins by lowest `id`); internally fail-safe (logs + returns last-applied card, never throws/500s the card write). Each firing records a `trigger_executions` row; a `webhook_url`-bearing firing is handed to an injected **`WebhookDispatcher`** that creates the `pending` `webhook_deliveries` row synchronously then runs the outbound POST + `setTimeout(30s).unref()` bounded retries **fire-and-forget off the request path** — the DB row is the source of truth (`pending → delivered | failed → exhausted`), so a slow/unreachable endpoint never enters the card PATCH latency budget and never fails the write. This realizes (and supersedes the "target" framing of) the **Webhook Delivery Pattern** section above.
+- **Source**: `memory-bank/creative/TASK-006-card-workflow-automation-architecture.md`, `memory-bank/creative/TASK-006-webhook-architecture.md`, `memory-bank/creative/TASK-006-webhook-retry-algorithm.md`
+
 ### 2026-07-15 — Realtime activity capture + in-process fan-out (TASK-005 Phase 1)
 - **Pattern**: capture card-status transitions on the existing write path into a `card_activity` table + an injected in-process `ActivityEmitter`, transport-agnostic (SSE transport is Phase 2). Persist-first, emit-second, gated on a real transition, fail-safe.
 - **Source**: `memory-bank/creative/TASK-005-realtime-activity-feed-architecture.md`
