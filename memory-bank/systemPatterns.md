@@ -45,6 +45,22 @@ wired via DATABASE_URL over the compose network; api starts only after db is hea
 - **Dependency Injection** — `AppDeps { checkDb }` is passed into the factory; the concrete `pg`-backed `checkConnection` is injected only in `server.ts`. Tests inject stubs for the connected / disconnected / throwing paths.
 - **Driver isolation (infrastructure boundary)** — all `pg` usage is confined to `src/db/pool.ts`; the rest of the app depends on the `DbHealthCheck` function type, not on `pg`. Keeps the door open to swap the query layer or add an ORM later.
 - **Structured logging abstraction** — a tiny `log()` wrapper (JSON to stdout) keeps call sites stable; can be swapped for an OpenTelemetry-backed logger without touching callers.
+- **In-process event fan-out seam (TASK-005)** — `ActivityEmitter` (a purpose-built `subscribe`/`emit` interface, not raw `EventEmitter`) is injected via `AppDeps` and constructed in `server.ts` (`InProcessActivityEmitter`, `Map<boardId, Set<handler>>`). It is the single swap-point for a future multi-instance promotion (Postgres `LISTEN/NOTIFY` / Redis pub/sub) — capture hook, repository, and routes never change, only the injected implementation. Fan-out isolates each subscriber (a throwing handler is caught + logged, never aborts delivery to the rest).
+- **Side-effect capture on the write path (TASK-005)** — status transitions are captured in the `PATCH /cards/:id` handler: `cardsRepo.update()` returns `{ card, previousStatus }` from a single atomic `RETURNING` subquery (race-free old-vs-new), and only a real transition (`previousStatus !== card.status`) persists one `card_activity` row (**persist-first**) then emits. Capture is wrapped fail-safe — a capture failure is logged and never fails or alters the PATCH response.
+
+## Recent Architecture Changes
+
+### 2026-07-15 — Realtime activity capture + in-process fan-out (TASK-005 Phase 1)
+- **Pattern**: capture card-status transitions on the existing write path into a `card_activity` table + an injected in-process `ActivityEmitter`, transport-agnostic (SSE transport is Phase 2). Persist-first, emit-second, gated on a real transition, fail-safe.
+- **Source**: `memory-bank/creative/TASK-005-realtime-activity-feed-architecture.md`
+
+### 2026-07-15 — Client realtime feed: single EventSource seam + status-union hook + decoupled a11y announcer (TASK-005 Phase 3)
+- **Pattern**: mirror the FEAT-004 frontend discipline for realtime — one `EventSource` seam (`api/activityStream.ts`), one status-union hook (`useActivityStream`: connecting/open/reconnecting/degraded, dedupe-by-id, arming heuristic), rendered by a feed component whose ONLY `aria-live` element is a visually-hidden announcer decoupled from the visible list (keyed by an announcement `seq` so identical repeated text still re-announces). A quiet-period "arming" timer distinguishes backfill/replay bursts from live events without a wire marker; a thrown transport construction degrades gracefully rather than crashing the board.
+- **Source**: `memory-bank/creative/TASK-005-realtime-activity-feed-uiux.md`
+
+### 2026-07-15 — SSE push transport with backfill/replay (TASK-005 Phase 2)
+- **Pattern**: `GET /activity/stream?board_id=` streams `text/event-stream`. Per connection: **subscribe to the emitter BEFORE the backfill DB read** (buffer live events during the read, flush deduped by `id` cursor — no gap, no duplicate); `Last-Event-ID` header → `findAfter` replay, else `findRecentByBoard` backfill; heartbeat interval; teardown on `req` close registered **before** the async read with an idempotent `closed` flag that guards every write (a timer/live event can never write to a destroyed socket). Malformed cursor/`board_id` validated (never `NaN` into a query or dedupe comparison). The `activityStreamHandler` is exported separately from the router so its streaming lifecycle is unit-testable with mock req/res (no hung socket).
+- **Source**: `memory-bank/creative/TASK-005-realtime-activity-feed-architecture.md`
 
 ## Testing Patterns
 

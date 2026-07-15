@@ -2,10 +2,10 @@
 
 ## Summary
 
-- **Total Features**: 4
+- **Total Features**: 5
 - **Released Versions**: 0
 - **Active Version**: none
-- **Planning Backlog**: next (4 features)
+- **Planning Backlog**: next (5 features)
 
 ## Versions
 
@@ -17,7 +17,8 @@
   - FEAT-001: Project Foundation (complete) [Level 2]
   - FEAT-002: Board CRUD API (planned) [Level 3]
   - FEAT-003: Card CRUD API (complete) [Level 3]
-  - FEAT-004: React Frontend (planned) [Level 3]
+  - FEAT-004: React Frontend (complete) [Level 3]
+  - FEAT-005: Realtime Activity Feed (planned) [Level 4]
 
 ## Features
 
@@ -66,7 +67,7 @@
 ### FEAT-004: React Frontend
 
 - **Version**: next
-- **Status**: planned
+- **Status**: complete
 - **Priority**: high
 - **Complexity**: Level 3
 - **Description**: Introduce a React single-page frontend for BanyanBoard consuming the existing REST API. Delivers two views: (1) a **board list page** showing all boards with the ability to open one, and (2) a **board view** rendering the selected board's cards grouped into three fixed columns — To Do / In Progress / Done. Includes frontend tech-stack and build-tooling setup (bundler, routing, API client), UI/UX layout for the board/column presentation, loading/empty/error states, and component structure. Read-oriented in this iteration (card drag-and-drop and card creation from the UI are out of scope unless a later feature adds them).
@@ -77,6 +78,19 @@
   - Loading, empty, and error states are handled for both views
   - Frontend is covered by automated component/UI tests
 - **Dependencies**: FEAT-002 (Board CRUD API — board list + board fetch); FEAT-003 (Card CRUD API — cards to populate columns, including a status field for column grouping). **Depends on both API features being available.**
-- **Linked Tasks**: None
-- **Branch**: feature/FEAT-004-react-frontend
+- **Linked Tasks**: TASK-004 (complete)
+- **Branch**: feature/FEAT-004-react-frontend (merged to main)
 - **Created**: 2026-07-12
+- **Completed**: 2026-07-14 — Read-only React SPA delivered (Vite + React Router + fetch client, dev-proxy for CORS, WCAG 2.1 AA component set); all 11 ACs, 20/20 tests, 0 vulns. Archive: `memory-bank/archive/archive-TASK-004.md`. Follow-up: `/banyan-uat TASK-004` (a11y browser walk) not yet run.
+
+### FEAT-005: Realtime Activity Feed
+
+- **Version**: next
+- **Status**: planned
+- **Priority**: medium
+- **Complexity**: Level 4
+- **Description**: Track and display a realtime activity feed of card movements between columns. Captures a card-movement event whenever a card's `status` changes (To Do ↔ In Progress ↔ Done — the `PATCH /cards/:id { status }` path from FEAT-003), persists it as an activity/event record, and pushes it live to connected clients so the frontend can render a continuously-updating feed without polling. Introduces the project's first realtime push transport (WebSocket or SSE) — a new server capability with connection-lifecycle management, event fan-out to subscribers, and reconnection/backfill semantics — plus an activity persistence model and a frontend live-feed UI. Expected to be phased (event capture + store → push transport → frontend feed) with multiple creative phases (transport architecture, event/activity model, feed UX).
+- **Dependencies**: FEAT-003 (Card CRUD API — card `status` changes are the events being tracked); FEAT-004 (React Frontend — the surface that renders the live feed). FEAT-001 (foundation — Express app factory, `pg` pool, logger).
+- **Linked Tasks**: TASK-005 (planning)
+- **Branch**: feature/FEAT-005-realtime-activity-feed
+- **Created**: 2026-07-13

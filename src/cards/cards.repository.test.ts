@@ -157,15 +157,26 @@ describe('PostgresCardsRepository', () => {
   });
 
   describe('update', () => {
-    it('applies partial fields, bumps updated_at, and maps the returned row', async () => {
+    // TASK-005 (architecture Q2): `update()` now returns `{ card,
+    // previousStatus }`, capturing the prior status atomically in the same
+    // round-trip (a `FROM` subquery folded into the UPDATE) rather than a
+    // separate SELECT — race-free old-vs-new detection for the PATCH route's
+    // activity-capture hook. The mocked row includes `previous_status` (the
+    // aliased column the CTE returns) so the repository's destructure/mapping
+    // is exercised the same way it would be against a live Postgres row.
+
+    it('applies partial fields, bumps updated_at, and maps the returned row plus prior status', async () => {
       const updated = row({
         status: 'in_progress',
         updated_at: new Date('2026-07-13T00:00:00.000Z'),
       });
-      const { pool, query } = mockPool({ rows: [updated], rowCount: 1 });
+      const { pool, query } = mockPool({
+        rows: [{ ...updated, previous_status: 'todo' }],
+        rowCount: 1,
+      });
       const repo = new PostgresCardsRepository(pool);
 
-      const card = await repo.update(1, { status: 'in_progress' });
+      const result = await repo.update(1, { status: 'in_progress' });
 
       const [sql, params] = query.mock.calls[0];
       expect(sql).toMatch(/update cards set/i);
@@ -174,11 +185,16 @@ describe('PostgresCardsRepository', () => {
       // Only the provided field is set (parameterized), plus the id in WHERE.
       expect(sql).toContain('status = $1');
       expect(params).toEqual(['in_progress', 1]);
-      expect(card).toEqual(updated);
+      expect(result).not.toBeNull();
+      expect(result?.card).toEqual(updated);
+      expect(result?.previousStatus).toBe('todo');
     });
 
     it('can update title, description, and due_date together', async () => {
-      const { pool, query } = mockPool({ rows: [row({ title: 'Renamed' })], rowCount: 1 });
+      const { pool, query } = mockPool({
+        rows: [{ ...row({ title: 'Renamed' }), previous_status: 'todo' }],
+        rowCount: 1,
+      });
       const repo = new PostgresCardsRepository(pool);
 
       await repo.update(1, { title: 'Renamed', description: 'New desc', due_date: '2026-09-01' });
@@ -197,16 +213,21 @@ describe('PostgresCardsRepository', () => {
       expect(await repo.update(999999, { title: 'X' })).toBeNull();
     });
 
-    it('bumps only updated_at when no updatable fields are supplied', async () => {
-      const { pool, query } = mockPool({ rows: [row()], rowCount: 1 });
+    it('bumps only updated_at when no updatable fields are supplied, and still reports the (unchanged) prior status', async () => {
+      const { pool, query } = mockPool({
+        rows: [{ ...row(), previous_status: 'todo' }],
+        rowCount: 1,
+      });
       const repo = new PostgresCardsRepository(pool);
 
-      const card = await repo.update(1, {});
+      const result = await repo.update(1, {});
 
       const [sql, params] = query.mock.calls[0];
       expect(sql).toMatch(/update cards set updated_at = now\(\)/i);
       expect(params).toEqual([1]);
-      expect(card).toEqual(row());
+      expect(result).not.toBeNull();
+      expect(result?.card).toEqual(row());
+      expect(result?.previousStatus).toBe('todo');
     });
   });
 

@@ -9,6 +9,9 @@ import { createBoardsRouter } from './boards/boards.routes';
 import type { BoardsRepository } from './boards/boards.repository';
 import { createCardsRouter } from './cards/cards.routes';
 import type { CardsRepository } from './cards/cards.repository';
+import type { ActivityRepository } from './activity/activity.repository';
+import type { ActivityEmitter } from './activity/activity.emitter';
+import { createActivityRouter, type ActivityStreamConfig } from './activity/activity.routes';
 import { log } from './config/logger';
 
 /**
@@ -23,6 +26,12 @@ export interface AppDeps {
   boardsRepo: BoardsRepository;
   /** Data-access layer for the `cards` resource; backs the Card CRUD routes. */
   cardsRepo: CardsRepository;
+  /** Data-access layer for card activity (TASK-005); backs capture + (Phase 2) backfill/replay. */
+  activityRepo: ActivityRepository;
+  /** In-process per-board fan-out (TASK-005); backs capture emission + (Phase 2) stream subscribe. */
+  activityEmitter: ActivityEmitter;
+  /** Backfill/heartbeat knobs (TASK-005 Phase 2) for the SSE activity stream. */
+  activityStreamConfig: ActivityStreamConfig;
 }
 
 /**
@@ -39,7 +48,8 @@ export function createApp(deps: AppDeps): Express {
 
   app.use(createHealthRouter(deps.checkDb));
   app.use(createBoardsRouter(deps.boardsRepo));
-  app.use(createCardsRouter(deps.cardsRepo, deps.boardsRepo));
+  app.use(createCardsRouter(deps.cardsRepo, deps.boardsRepo, deps.activityRepo, deps.activityEmitter));
+  app.use(createActivityRouter(deps.activityRepo, deps.activityEmitter, deps.activityStreamConfig));
 
   // Central error handler. Turns a malformed JSON body into a 400 and any other
   // unexpected failure (e.g. a database outage surfaced via `next(err)`) into a
