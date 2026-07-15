@@ -48,6 +48,19 @@ wired via DATABASE_URL over the compose network; api starts only after db is hea
 - **In-process event fan-out seam (TASK-005)** — `ActivityEmitter` (a purpose-built `subscribe`/`emit` interface, not raw `EventEmitter`) is injected via `AppDeps` and constructed in `server.ts` (`InProcessActivityEmitter`, `Map<boardId, Set<handler>>`). It is the single swap-point for a future multi-instance promotion (Postgres `LISTEN/NOTIFY` / Redis pub/sub) — capture hook, repository, and routes never change, only the injected implementation. Fan-out isolates each subscriber (a throwing handler is caught + logged, never aborts delivery to the rest).
 - **Side-effect capture on the write path (TASK-005)** — status transitions are captured in the `PATCH /cards/:id` handler: `cardsRepo.update()` returns `{ card, previousStatus }` from a single atomic `RETURNING` subquery (race-free old-vs-new), and only a real transition (`previousStatus !== card.status`) persists one `card_activity` row (**persist-first**) then emits. Capture is wrapped fail-safe — a capture failure is logged and never fails or alters the PATCH response.
 
+## Webhook Delivery Pattern
+
+> Target pattern for TASK-006 / FEAT-006 (Card Workflow Automation), Phase 3 —
+> documented ahead of build; delivery is decoupled from and fail-safe with respect
+> to trigger execution (a failed webhook never rolls back or fails the auto-move).
+
+When a trigger with webhook configuration fires:
+1. Trigger execution completes first (decoupled from delivery)
+2. Webhook delivery queued as separate async job
+3. Delivery attempts: max 3, 30-second backoff between attempts
+4. Delivery record: `{ rule_id, attempt_count, status, http_response_code, error, created_at }`
+5. Status lifecycle: `pending → delivered | failed → exhausted`
+
 ## Recent Architecture Changes
 
 ### 2026-07-15 — Realtime activity capture + in-process fan-out (TASK-005 Phase 1)

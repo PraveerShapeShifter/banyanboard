@@ -2,10 +2,10 @@
 
 ## Summary
 
-- **Total Features**: 5
+- **Total Features**: 6
 - **Released Versions**: 0
 - **Active Version**: none
-- **Planning Backlog**: next (5 features)
+- **Planning Backlog**: next (6 features)
 
 ## Versions
 
@@ -19,6 +19,7 @@
   - FEAT-003: Card CRUD API (complete) [Level 3]
   - FEAT-004: React Frontend (complete) [Level 3]
   - FEAT-005: Realtime Activity Feed (complete) [Level 4]
+  - FEAT-006: Card Workflow Automation (planned) [Level 3]
 
 ## Features
 
@@ -95,3 +96,22 @@
 - **Branch**: feature/FEAT-005-realtime-activity-feed (merged to main)
 - **Created**: 2026-07-13
 - **Completed**: 2026-07-15 — Realtime Activity Feed delivered (SSE push transport, `card_activity` capture on the `PATCH /cards/:id` path, per-board in-process fan-out, accessible live side-panel feed); all 10 ACs + AC-NAV-1, 118/118 backend + 35/35 frontend tests, UAT PASS_WITH_RECOMMENDATIONS (0 Required). Archive: `memory-bank/archive/archive-TASK-005.md`. Deferred follow-ups: Phase 4 E2E impl (spec ready), REC-1 migration path, REC-2 mobile verification + announcer sentinel.
+
+### FEAT-006: Card Workflow Automation
+
+- **Version**: next
+- **Status**: planned
+- **Priority**: medium
+- **Complexity**: Level 3
+- **Description**: Introduce **rule-based workflow automation** for cards. A board owner defines automation rules that automatically move a card to a different status/column when a condition is satisfied (e.g., a card's due date passes, or a field changes). A rules engine evaluates persisted `condition → action` rules against card lifecycle events and applies auto-moves through the existing card status-change path — reusing the FEAT-005 activity-capture hook so automated moves surface in the realtime activity feed (distinguishable from manual moves). Scope for this feature is the **rule-based auto-move** capability: rule persistence model, condition/action schema, an evaluation engine with cycle/loop prevention, and rule-management REST endpoints. Trigger→action macros, SLA/time-based automations, and a rule-builder UI are out of scope for this iteration unless a later feature adds them.
+- **Acceptance Criteria**:
+  - Automation rules can be created, listed, updated, and deleted, each scoped to a board, with a condition and a target-status action
+  - When a card's state changes such that a rule's condition is satisfied, the engine automatically transitions the card to the rule's target status
+  - The evaluation engine is guarded against infinite loops and cyclic rules (a bounded, terminating pass)
+  - Automated moves are recorded in the activity feed (reusing FEAT-005) and are distinguishable from manual moves
+  - Invalid rule definitions are rejected with clear validation errors (400)
+  - Rules and the engine are covered by automated tests (condition matched / not matched, loop prevention, disabled-rule no-op)
+- **Dependencies**: FEAT-003 (Card CRUD API — card `status` is what rules auto-move, and the `PATCH /cards/:id` path is the evaluation trigger); FEAT-002 (Board CRUD API — rules are scoped per board); FEAT-005 (Realtime Activity Feed — automated moves emit activity events). FEAT-001 (foundation — Express app factory, `pg` pool, logger).
+- **Linked Tasks**: TASK-006 (planning)
+- **Branch**: feature/FEAT-006-card-workflow-automation
+- **Created**: 2026-07-15
