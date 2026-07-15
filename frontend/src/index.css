@@ -179,3 +179,106 @@ main.board-view {
   font-size: 0.85rem;
   color: #3a3a3a;
 }
+
+/* Standard visually-hidden (clip) utility — used for the activity feed's
+   hidden aria-live announcer so screen readers receive announcements
+   without a visible element on screen. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Activity feed (TASK-005 Phase 3 — UI/UX creative: persistent side panel).
+   Mobile (<640px) and tablet (640–1024px) need no extra rules: the feed is
+   a plain block-level <section>, a sibling of `.columns`, so it already
+   flows as the next stacked section on mobile (`.columns` itself stacks to
+   1fr there) and as a full-width row below the still-3-column grid on
+   tablet — exactly the placements the creative calls for, with zero new
+   breakpoint concept. */
+.activity-feed {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 0.75rem;
+  background-color: #fafafa;
+}
+
+.activity-feed__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.activity-feed__item {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.6rem 0.7rem;
+  background-color: #ffffff;
+}
+
+.activity-feed__item p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.activity-feed__item time {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: #5a5a5a;
+}
+
+.activity-feed__status {
+  margin: 0 0 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.activity-feed__status--reconnecting {
+  background-color: #fff7e0;
+  color: #6a5200;
+  border: 1px solid #f0d78c;
+}
+
+.activity-feed__status--degraded {
+  background-color: #fbeaea;
+  color: #7a2020;
+  border: 1px solid #e6b0b0;
+}
+
+/* Desktop only (>1024px): `main.board-view` becomes the grid container and
+   `.columns` collapses to `display: contents` so its 3 column <section>s
+   become sibling grid items alongside `.activity-feed`'s 4th track — no
+   changes needed to Columns.tsx/Column.tsx to get a 4th track. */
+@media (min-width: 1024.01px) {
+  main.board-view {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr) minmax(260px, 320px);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  main.board-view .board-header {
+    grid-column: 1 / -1;
+  }
+
+  main.board-view .columns {
+    display: contents;
+  }
+
+  .activity-feed {
+    align-self: stretch;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+}

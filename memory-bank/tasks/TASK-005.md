@@ -214,7 +214,7 @@ Four stages: three build phases (each independently testable; Phase 3 completes 
   - Per-board subscription + in-process fan-out from the `ActivityEmitter`; bounded backfill on connect from the activity repo; reconnection/replay via `Last-Event-ID`/cursor; heartbeat/keepalive; connection cleanup; 12-factor knobs (path, backfill size, heartbeat) via env.
   - Structured logs on connection lifecycle. **Delivers**: server side of AC-HAPPY-1, AC-ASYNC-1, AC-ASYNC-2, AC-VERIFY-3, AC-ERROR-1 (server). **Depends on**: Architecture creative (transport + fan-out/lifecycle).
 
-- [ ] **Phase 3 — Frontend live feed UI (completes the entry→success journey).**
+- [x] **Phase 3 — Frontend live feed UI (completes the entry→success journey).** ✅ BUILD COMPLETE (2026-07-15)
   - Client transport seam (`frontend/src/api/activityStream.ts` — the single place that opens `EventSource`/socket, mirroring the `api/client.ts` discipline) + `hooks/useActivityStream.ts` state machine (connecting/open/reconnecting/degraded, append-on-message, backfill).
   - Feed surface on the board view per UI/UX creative (panel vs drawer vs `/boards/:id/activity`): newest-first, human-readable items (card title + from→to labels), `aria-live` announce, non-color status, and empty/connecting/reconnecting/degraded states; renders backfill on connect.
   - **Delivers**: AC-ENTRY-1, AC-HAPPY-1 (end-to-end), AC-HAPPY-2, AC-ASYNC-1/2 (client), AC-ERROR-1 (client), completes AC-INTEGRATION-1 end-to-end. **Depends on**: UI/UX creative.
@@ -239,14 +239,24 @@ Level 4 → creative exploration REQUIRED before build. Two phases (mirroring FE
 
 ## Execution State
 
-**Build Status**: IDLE (Phase 2 complete — human review gate)
-**Current Build**: Phase 2: Realtime push transport + backfill/replay (TASK-005)
-**Phase Number**: 2 of 4 (3 build phases + post-UAT E2E)
+**Build Status**: IDLE (Phase 3 complete — human review gate)
+**Current Build**: Phase 3: Frontend live feed UI (TASK-005)
+**Phase Number**: 3 of 4 (3 build phases done; post-UAT E2E remains)
 **Is Multi-Phase**: YES
-**Current Phase**: BUILD (Phase 2 done) → next: `/banyan-build TASK-005` (Phase 3)
-**Current Step**: Step 11 - Git Completion (Phase 2) - COMPLETE
-**Latest Commit**: (Phase 2 commit — see below)
+**Current Phase**: BUILD (Phase 3 done) → next: `/banyan-uat TASK-005` then Phase 4 (E2E)
+**Current Step**: Step 11 - Git Completion (Phase 3) - COMPLETE
+**Latest Commit**: (Phase 3 commit — see below)
 **Can Resume**: NO
+
+### Completed Steps (Phase 3 build)
+- Step 3 Test Writer: 13 tests RED — `activityStream.test.ts` (3), `useActivityStream.test.ts` (4), `ActivityFeed.test.tsx` (5), `BoardViewPage.test.tsx` (+1 mount, region 3→4), shared `test/fakeEventSource.ts`
+- Step 4 Coding Agent: `api/activityStream.ts` (EventSource seam, VITE_API_BASE_URL default /api, encodeURIComponent id), `hooks/useActivityStream.ts` (status machine connecting/open/reconnecting/degraded, dedupe-by-id newest-first, arming heuristic, degraded timer, fail-safe try/catch on EventSource construction), `ActivityFeed`/`ActivityFeedItem`/`ActivityFeedStatus`, shared `statusLabels.ts` (Columns.tsx refactored to share it), `BoardViewPage` mounts the feed, `index.css` (desktop 4th grid track via `.columns{display:contents}`, tablet/mobile stacked, `.visually-hidden`)
+- Step 6-7 Verification (initial): 33/33 frontend tests PASS; `tsc --noEmit` clean; `vite build` PASS (70.4 kB gzip)
+- Step 8 Code Review (build-code-reviewer-agent): **BLOCK → resolved**. 3 findings: (1) boardId change didn't reset feed state → stale cross-board items + skipped connecting; (2) arm-timer latches for connection life → a >250ms intra-burst gap could announce a historical frame; (3) identical repeated announcement text not re-announced (contradicts creative a11y §5). **Fixed**: (1) reset all per-connection state at effect start; (3) key the announcer's inner node by `seq` so each announcement replaces the DOM node (synchronous, re-announces identical text); (2) kept the quiet-period heuristic (correct given the Phase 2 server flushes each batch synchronously as a contiguous burst) + documented the residual and the proper fix (server backfill-complete sentinel — future follow-up). Reverted the reviewer's one non-blocking empty-state if/else suggestion (broke a test that relies on the list always rendering). Added 2 regression tests (board-switch reset; seq bumps for identical text)
+- Step 6-7 Verification (post-fix): 35/35 frontend tests PASS (was 20 FEAT-004 → +13 Phase 3 → +2 regression); `tsc` clean; `vite build` PASS (70.5 kB gzip). Backend unchanged (118/118).
+- Step 9-10 Docs/Memory: this file + systemPatterns.md + techContext.md + tasks.md + progress.md
+
+**Delivers (completes the journey)**: AC-ENTRY-1, AC-HAPPY-1 (end-to-end live), AC-HAPPY-2 (phrasing + a11y announcer), AC-ASYNC-1/2 (client backfill + reconnect states), AC-ERROR-1 (client degraded), AC-INTEGRATION-1 (real capture→transport→DOM). **All 11 ACs now met end-to-end in code + tests.** Remaining: `/banyan-uat TASK-005` (a11y/live browser walk) → Phase 4 (post-UAT E2E).
 
 ### Completed Steps (Phase 2 build)
 - Step 3 Test Writer: 10 tests RED — `activity.routes.test.ts` (9) + `app.test.ts` (+1 mount smoke). Contract: `activityStreamHandler(repo,emitter,config)` exported separately + `createActivityRouter(...)` mounting `GET /activity/stream`; env knobs `ACTIVITY_BACKFILL_LIMIT`(50)/`ACTIVITY_HEARTBEAT_MS`(15000)

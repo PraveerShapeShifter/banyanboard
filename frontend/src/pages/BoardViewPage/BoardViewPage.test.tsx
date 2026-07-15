@@ -1,18 +1,31 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { routes } from '../../routes';
 import type { Board, Card, CardStatus } from '../../api/types';
 import * as client from '../../api/client';
+import * as activityStream from '../../api/activityStream';
 
 /**
- * Phase 3 tests — board view + 3-column status grouping. The client (single I/O
- * seam) is module-mocked; the shared route table is driven through the
- * declarative router so the list→click→columns journey is exercised for real.
- * Covers AC-HAPPY-4/6, AC-ERROR-2/3, AC-ASYNC-1 (board).
+ * Phase 3 (FEAT-004) tests — board view + 3-column status grouping. The client
+ * (single I/O seam) is module-mocked; the shared route table is driven through
+ * the declarative router so the list→click→columns journey is exercised for
+ * real. Covers AC-HAPPY-4/6, AC-ERROR-2/3, AC-ASYNC-1 (board).
+ *
+ * TASK-005 Phase 3 adds `ActivityFeed` (which owns `useActivityStream`, which
+ * owns `activityStream.ts`) alongside `Columns` in the success branch. These
+ * tests aren't about the feed's own behavior (see `ActivityFeed.test.tsx`), so
+ * `activityStream.ts` — the same single I/O seam discipline as `client.ts` —
+ * is module-mocked here too: it never opens a real `EventSource`, so the feed
+ * simply sits in "connecting" (harmless) for every test in this file.
  */
 vi.mock('../../api/client');
+vi.mock('../../api/activityStream');
+
+beforeEach(() => {
+  vi.mocked(activityStream.openActivityStream).mockReturnValue({ close: vi.fn() });
+});
 
 function renderAppAt(path: string) {
   return render(
@@ -91,7 +104,25 @@ describe('BoardViewPage', () => {
 
     const done = await screen.findByRole('region', { name: /Done \(0\)/ });
     expect(within(done).getByText('No cards')).toBeInTheDocument();
-    expect(screen.getAllByRole('region')).toHaveLength(3);
+    // 3 status columns + the TASK-005 Activity feed region (Phase 3) — not
+    // just the 3 columns anymore now that ActivityFeed mounts alongside them.
+    expect(screen.getAllByRole('region')).toHaveLength(4);
+  });
+
+  it('mounts the Activity feed region alongside the columns without breaking column rendering (TASK-005 Phase 3)', async () => {
+    vi.mocked(client.getBoard).mockResolvedValue({ ok: true, data: board });
+    vi.mocked(client.getCards).mockResolvedValue({
+      ok: true,
+      data: [card(1, 'todo', 'Draft brief')],
+    });
+
+    renderAppAt('/boards/1');
+
+    expect(await screen.findByRole('region', { name: 'Activity' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /To Do/ })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /In Progress/ })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /Done/ })).toBeInTheDocument();
+    expect(screen.getByText('Draft brief')).toBeInTheDocument();
   });
 
   it('shows an error with a working Retry when the board data fails, and no column silently empties (AC-ERROR-2)', async () => {

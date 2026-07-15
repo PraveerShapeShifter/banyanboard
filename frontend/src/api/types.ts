@@ -28,3 +28,19 @@ export interface Card {
   created_at: string;
   updated_at: string;
 }
+
+/**
+ * One card-movement event as pushed over the realtime activity stream
+ * (TASK-005). `card_id` is nullable — the activity record survives its card's
+ * deletion (`card_id` FK is `ON DELETE SET NULL`); `card_title` is
+ * denormalized specifically so the feed still reads correctly in that case.
+ */
+export interface CardActivity {
+  id: number;
+  board_id: number;
+  card_id: number | null;
+  card_title: string;
+  from_status: CardStatus;
+  to_status: CardStatus;
+  created_at: string;
+}
