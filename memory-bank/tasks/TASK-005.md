@@ -1,7 +1,8 @@
 # TASK-005: Realtime Activity Feed
 
 **Complexity**: Level 4
-**Status**: UAT_PASS
+**Status**: REFLECTION_COMPLETE
+**Reflection**: memory-bank/reflection/reflection-TASK-005.md
 **UAT**: PASS_WITH_RECOMMENDATIONS (run `20260715-uat-inline`, 2026-07-15) — Required=0, Recommended=2. Report: `memory-bank/uat/uat-TASK-005.md`; E2E spec: `memory-bank/uat/spec-TASK-005-e2e.md`
 **Roadmap**: FEAT-005
 **Branch**: feature/FEAT-005-realtime-activity-feed
@@ -242,14 +243,23 @@ Level 4 → creative exploration REQUIRED before build. Two phases (mirroring FE
 
 ## Execution State
 
-**Build Status**: IDLE (UAT PASS — ready for Phase 4 E2E build)
+**Build Status**: IDLE
 **Current Build**: Phase 3: Frontend live feed UI (TASK-005)
-**Phase Number**: 3 of 4 (3 build phases done; UAT PASS; post-UAT E2E remains)
+**Phase Number**: 3 of 4 (3 build phases done; UAT PASS; reflection done; post-UAT E2E remains)
 **Is Multi-Phase**: YES
-**Current Phase**: UAT (PASS_WITH_RECOMMENDATIONS) → next: `/banyan-build TASK-005` (Phase 4: implement E2E spec)
-**Current Step**: `/banyan-uat` COMPLETE — report + E2E spec written
-**Latest Commit**: 7e4f91d (Phase 3, pushed to origin/feature/FEAT-005-realtime-activity-feed)
+**Current Phase**: REFLECT → ARCHIVE
+**Current Step**: `/banyan-reflect` COMPLETE — reflection + learned rules committed
+**Latest Commit**: (reflection commit — see below)
 **Can Resume**: NO
+
+### Reflection (run 2026-07-15)
+- **Ratings**: Task Implementation Quality = ✅ Success; Ecosystem Effectiveness = ✅ Highly Effective.
+- **Doc**: `memory-bank/reflection/reflection-TASK-005.md` (Level 4 template).
+- **Continuous learning**: 4 learnings extracted — created `connection-lifecycle.md`; amended `data-access.md` (ec→3, promoted low→medium), `frontend-patterns.md` (ec→2), `infrastructure.md` (ec→2, +deployment/migrations scope). 8 learned files (under cap 10).
+- **Open follow-ups (carry to archive)**: (1) Phase 4 — implement the generated E2E spec (`memory-bank/uat/spec-TASK-005-e2e.md`) or explicitly defer; (2) REC-1 — no migration path for existing deployments, missing `card_activity` table fails silently to empty feed (add migration runner + readiness signal); (3) REC-2 — mobile breakpoint unverifiable in the UAT MCP; replace client arm-timer heuristic with a server backfill-complete sentinel.
+
+### Active Sub-Agents (REFLECT)
+- Reflection Agent (Sonnet): COMPLETE — wrote `memory-bank/reflection/reflection-TASK-005.md`
 
 ### UAT (run 20260715-uat-inline, 2026-07-15)
 - **Verdict**: PASS_WITH_RECOMMENDATIONS — Required=0, Recommended=2, Optional=0. All 10 ACs verified.

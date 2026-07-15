@@ -58,6 +58,22 @@ Chronological record of pattern extraction and consolidation events from task re
 
 ---
 
+## 2026-07-15 - TASK-005 Reflection
+
+### Extracted Patterns
+- **connection-lifecycle** → created `agent-rules/_learned/connection-lifecycle.md` (evidence count: 1) — register `req.on('close')` cleanup before any `await` with an idempotent `closed` flag; subscribe-before-backfill with cursor dedupe + validated `Last-Event-ID` (first realtime/SSE topic)
+- **data-access** → amended `agent-rules/_learned/data-access.md` (evidence count: 3) — atomic old-vs-new via `FROM (SELECT …) AS old` + `RETURNING` subquery instead of SELECT-then-UPDATE. **Promoted low → medium** (crossed threshold 3).
+- **frontend-patterns** → amended `agent-rules/_learned/frontend-patterns.md` (evidence count: 2) — single-seam + status-union discipline extends to a long-lived stream (connecting/open/reconnecting/degraded, reset on key change); decoupled visually-hidden `aria-live` announcer keyed for re-announce + arming heuristic; widened topics to streaming/accessibility
+- **deployment** → amended `agent-rules/_learned/infrastructure.md` (evidence count: 2) — treat each new `db/init/*.sql` as deployment-affecting: init scripts run only on a fresh volume, so document/verify the non-fresh path + add a readiness signal so a missing table fails loudly not silently; widened globs to `db/init/*.sql`, topics to deployment/migrations
+
+### systemPatterns.md Updates
+- None (the three novel architecture patterns — in-process fan-out seam, write-path side-effect capture, SSE push transport with backfill/replay, and the client EventSource-seam + decoupled a11y announcer — were already documented in systemPatterns.md § Recent Architecture Changes by the build Documentation Agent during Phase 1-3 builds; no duplication needed)
+
+### Files
+- Before: 7, After: 8 (connection-lifecycle.md created; still under cap 10)
+
+---
+
 ## 2026-07-13 - Consolidation (during TASK-003 archive)
 
 - Files before: 6, Files after: 6
