@@ -316,7 +316,7 @@ logger).
   - `src/rules/rules.engine.ts`: evaluate a card's post-update state against the board's enabled rules; apply the target-status move; **bounded, terminating** pass (visited-status `Set` + `MAX_HOPS=3`, first-match-wins by `id`, per frozen algorithm); fail-safe (log + never crash/500 the card PATCH, mirroring the activity try/catch); **record a `trigger_executions` row per firing**, and **hand each `webhook_url`-bearing firing to the injected `WebhookDispatcher`** (the dispatcher creates the `pending` delivery row synchronously; the POST is Phase 3)
   - `RecordActivityInput` + `ActivityRepository.record` gain `triggered_by`/`rule_id`; manual call site tags `'manual'`; ensure `triggered_by`/`rule_id` flow through `ActivityEmitter` → SSE payload (folds the former Phase 3 — activity distinguishability, verified end-to-end)
   - Hook `ruleEngine` into `PATCH /cards/:id` (`src/cards/cards.routes.ts`) after the FEAT-005 capture block; response reflects final status; a slow/failing webhook must not delay it
-- [ ] **Phase 3 — Webhook delivery + retry** (AC-HAPPY-3, AC-ERROR-4, AC-ASYNC-3) — *gated on webhook creative*
+- [x] **Phase 3 — Webhook delivery + retry** (AC-HAPPY-3, AC-ERROR-4, AC-ASYNC-3) ✅ COMPLETE (2026-07-15): HttpWebhookDispatcher (fetch + AbortController, 3 attempts, 30s backoff, pending→delivered|failed→exhausted, coded errors, fully fail-safe), env config, wired into engine; +13 dispatcher tests (216/216), tsc clean
   - `src/webhooks/webhooks.dispatcher.ts`: the injected **`WebhookDispatcher`** seam (mirrors `ActivityEmitter`/`RuleEngine`) — creates the `pending` `webhook_deliveries` row synchronously, then performs the outbound `POST` (Node `fetch` + `AbortController` timeout, no new dependency) + bounded retries **asynchronously, off the request path**; drives the `pending → delivered | failed → exhausted` lifecycle; internally fail-safe (never throws out, never crashes the process, never fails the card write)
   - Retry/backoff schedule + `WEBHOOK_TIMEOUT_MS`/`WEBHOOK_MAX_ATTEMPTS`/`WEBHOOK_RETRY_BACKOFF_MS` env config (`src/config/env.ts`); structured logs `rules.webhook_failed` / `rules.webhook_exhausted`
   - Construct the dispatcher in `server.ts`, add to `AppDeps`, inject into `CardRuleEngine`
@@ -379,12 +379,12 @@ Webhook + UI addition (COMPLETE 2026-07-15):
 
 ## Execution State
 
-**Build Status**: RUNNING (Phase 2 complete → Phase 3 next)
-**Current Phase**: BUILD — Phase 2 of 4 COMPLETE
-**Current Step**: Phase 2 (engine + PATCH integration + activity distinguishability) done & verified (203/203 tests, tsc clean, committed). Next: Phase 3 (webhook delivery + retry — HttpWebhookDispatcher replaces NoopWebhookDispatcher).
-**Last Completed**: BUILD Phase 2 — CardRuleEngine, activity triggered_by/rule_id, trigger_executions per hop, cards PATCH integration, NoopWebhookDispatcher seam; +22 tests
+**Build Status**: RUNNING (Phase 3 complete → Phase 4 next)
+**Current Phase**: BUILD — Phase 3 of 4 COMPLETE
+**Current Step**: Phase 3 (webhook delivery + retry) done & verified (216/216 tests, tsc clean, committed). Next: Phase 4 (Automation-tab UI in frontend/).
+**Last Completed**: BUILD Phase 3 — HttpWebhookDispatcher (POST + retry lifecycle), env config, engine wiring; +13 tests
 **Can Resume**: YES
-**Phase 2 note (for Phase 3)**: engine calls `webhookDispatcher.dispatch(execution, rule, payloadData)` per firing when rule.webhook_url set; Phase 3 replaces NoopWebhookDispatcher with HttpWebhookDispatcher that creates the pending webhook_deliveries row + runs POST/retry lifecycle. trigger_executions currently always 'executed' on an applied hop (engine doesn't emit 'failed' executions this build).
+**Phase 3 notes**: (1) byte-stable POST body held in an in-memory `payloads` map keyed by delivery id (row stores payload, but read projection omits it) — consistent with the frozen non-durable in-process mechanism; a future re-drive would need a payload-reading repo method. (2) unexpected-throw fail-safe logs `rules.webhook_dispatch_error`. Backend (Phases 1–3) COMPLETE; Phase 4 is frontend-only.
 **Run parameters (user-decided 2026-07-15)**: autonomous run committing each phase; SSRF = http(s)-validation-only (accepted risk); WEBHOOK_MAX_ATTEMPTS = 3 total.
 **Phase 1 note (for Phase 2/3)**: WebhooksRepository method names as implemented — `recordExecution`, `createDelivery`, `updateDelivery`/`markDelivered`/`markFailed`/`markExhausted`, `listTriggerExecutions`, `listDeliveries`, `findDeliveryById`, `findNonTerminalDeliveries`. Engine/dispatcher must consume these exact names.
 **Run parameters (user-decided 2026-07-15)**: autonomous run committing each phase; SSRF = http(s)-validation-only (accepted risk); WEBHOOK_MAX_ATTEMPTS = 3 total.

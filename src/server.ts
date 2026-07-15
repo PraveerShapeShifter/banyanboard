@@ -10,7 +10,7 @@ import type { ActivityStreamConfig } from './activity/activity.routes';
 import { PostgresRulesRepository } from './rules/rules.repository';
 import { CardRuleEngine } from './rules/rules.engine';
 import { PostgresWebhooksRepository } from './webhooks/webhooks.repository';
-import { NoopWebhookDispatcher } from './webhooks/webhooks.dispatcher';
+import { HttpWebhookDispatcher } from './webhooks/webhooks.dispatcher';
 
 const env = loadEnv();
 const pool = createPool(env.databaseUrl);
@@ -27,9 +27,13 @@ const activityRepo = new PostgresActivityRepository(pool);
 const activityEmitter = new InProcessActivityEmitter();
 const rulesRepo = new PostgresRulesRepository(pool);
 const webhooksRepo = new PostgresWebhooksRepository(pool);
-// Phase 2 uses the no-op dispatcher (seam wired + tested); the real outbound
-// HTTP + retry `HttpWebhookDispatcher` is Phase 3.
-const webhookDispatcher = new NoopWebhookDispatcher();
+// Phase 3: the real outbound HTTP + bounded-retry dispatcher, driving delivery
+// OFF the request path (global `fetch` + `AbortController` + `setTimeout`).
+const webhookDispatcher = new HttpWebhookDispatcher(webhooksRepo, {
+  timeoutMs: env.webhookTimeoutMs,
+  maxAttempts: env.webhookMaxAttempts,
+  retryBackoffMs: env.webhookRetryBackoffMs,
+});
 const ruleEngine = new CardRuleEngine({
   rulesRepo,
   cardsRepo,
