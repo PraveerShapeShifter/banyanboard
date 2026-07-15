@@ -17,6 +17,29 @@ export type ApiResult<T> =
   | { ok: false; kind: 'network'; error: unknown };
 
 /**
+ * The rules module's coded `400`/`404` body (a deliberate divergence from the
+ * `{error,details}` shape cards/boards use): `{ code, message, details? }` with
+ * `details:[{field,error}]`. A form maps `details[].field` to inline errors.
+ */
+export interface CodedError {
+  code: string;
+  message: string;
+  details?: { field: string; error: string }[];
+}
+
+/**
+ * Result of a mutation (`POST`/`PATCH`/`DELETE`). Richer than {@link ApiResult}
+ * because it must carry the coded validation body the read path never sees: a
+ * `400`/`404` whose JSON body has a `code` becomes `kind:'validation'`; any
+ * other non-2xx is `kind:'http'`; a transport failure is `kind:'network'`.
+ */
+export type MutationResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; kind: 'validation'; error: CodedError }
+  | { ok: false; kind: 'http'; status: number }
+  | { ok: false; kind: 'network'; error: unknown };
+
+/**
  * Base path for all API calls. Read from the environment (12-factor) so the
  * built artifact is environment-agnostic; defaults to same-origin `/api`, which
  * the Vite dev-server proxy forwards to the Express API (prefix stripped). Read
@@ -26,7 +49,7 @@ function baseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? '/api';
 }
 
-async function getJson<T>(path: string): Promise<ApiResult<T>> {
+export async function getJson<T>(path: string): Promise<ApiResult<T>> {
   let response: Response;
   try {
     response = await fetch(`${baseUrl()}${path}`, {
@@ -49,6 +72,66 @@ async function getJson<T>(path: string): Promise<ApiResult<T>> {
   } catch (error) {
     // 2xx but an unparseable body — treat as a transport-level failure.
     return { ok: false, kind: 'network', error };
+  }
+}
+
+/**
+ * The single mutation seam (TASK-006 Phase 4): the only place `POST`/`PATCH`/
+ * `DELETE` are issued, mirroring `getJson`'s fetch-confinement. A `400`/`404`
+ * whose body is a coded `{code,...}` envelope is surfaced as `kind:'validation'`
+ * so a caller can map `details[].field` to inline field errors; anything else
+ * non-2xx is `kind:'http'`. A `204` (or any empty 2xx body) resolves `data`
+ * as `undefined` — callers of `DELETE` use `MutationResult<void>`.
+ */
+export async function mutateJson<T>(
+  method: 'POST' | 'PATCH' | 'DELETE',
+  path: string,
+  body?: unknown,
+): Promise<MutationResult<T>> {
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl()}${path}`, {
+      method,
+      headers: {
+        Accept: 'application/json',
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (error) {
+    return { ok: false, kind: 'network', error };
+  }
+
+  if (!response.ok) {
+    // A coded body (`{code,message,details?}`) drives inline field errors; a
+    // non-coded / unparseable body falls back to a generic http failure.
+    let parsed: unknown;
+    try {
+      parsed = await response.json();
+    } catch {
+      parsed = undefined;
+    }
+    if (
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      typeof (parsed as { code?: unknown }).code === 'string'
+    ) {
+      return { ok: false, kind: 'validation', error: parsed as CodedError };
+    }
+    return { ok: false, kind: 'http', status: response.status };
+  }
+
+  if (response.status === 204) {
+    return { ok: true, data: undefined as T };
+  }
+
+  try {
+    const data = (await response.json()) as T;
+    return { ok: true, data };
+  } catch {
+    // A 2xx with an empty/unparseable body (e.g. some DELETEs) — treat as an
+    // empty success rather than a transport failure.
+    return { ok: true, data: undefined as T };
   }
 }
 

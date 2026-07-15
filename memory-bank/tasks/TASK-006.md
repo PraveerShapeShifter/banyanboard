@@ -1,7 +1,7 @@
 # TASK-006: Card Workflow Automation
 
 **Complexity**: Level 3 (inherited from FEAT-006)
-**Status**: CREATIVE_COMPLETE (auto-move + webhook + UI all frozen 2026-07-15) → ready for BUILD Phase 1
+**Status**: BUILD_COMPLETE (all 4 phases; backend 216/216 + frontend 100/100 tests; ready for /banyan-reflect)
 **Roadmap**: FEAT-006
 **Branch**: feature/FEAT-006-card-workflow-automation
 **Worktree**: N/A
@@ -320,7 +320,7 @@ logger).
   - `src/webhooks/webhooks.dispatcher.ts`: the injected **`WebhookDispatcher`** seam (mirrors `ActivityEmitter`/`RuleEngine`) — creates the `pending` `webhook_deliveries` row synchronously, then performs the outbound `POST` (Node `fetch` + `AbortController` timeout, no new dependency) + bounded retries **asynchronously, off the request path**; drives the `pending → delivered | failed → exhausted` lifecycle; internally fail-safe (never throws out, never crashes the process, never fails the card write)
   - Retry/backoff schedule + `WEBHOOK_TIMEOUT_MS`/`WEBHOOK_MAX_ATTEMPTS`/`WEBHOOK_RETRY_BACKOFF_MS` env config (`src/config/env.ts`); structured logs `rules.webhook_failed` / `rules.webhook_exhausted`
   - Construct the dispatcher in `server.ts`, add to `AppDeps`, inject into `CardRuleEngine`
-- [ ] **Phase 4 — UI settings panel** (Board Settings → Automation tab) — *gated on UI/UX creative*
+- [x] **Phase 4 — UI settings panel** (Board Settings → Automation tab) ✅ COMPLETE (2026-07-15): route /boards/:id/automation, mutation seam in api/client.ts, RuleForm w/ coded-error mapping, role="switch" optimistic toggle, role="alertdialog" ConfirmDialog, master-detail history w/ delivery badges; +65 frontend tests (100/100), tsc --noEmit clean, vite build OK
   - `frontend/src/`: an Automation tab reached from Board Settings on `BoardViewPage` — rule-creation form (name, condition status, target status, optional `webhook_url`, enabled toggle), per-board rule list (enable/disable/delete), and read-only execution + delivery history (`GET /trigger-executions` / `GET /webhook-deliveries`)
   - Reuse existing frontend patterns/components (`ActivityFeed`, `EmptyState`/`ErrorState`/`Loading`); wire an API client alongside the existing board/card/activity fetches
 - [ ] **Test coverage** woven into each phase per the Test Strategy above (not a trailing phase)
@@ -379,12 +379,14 @@ Webhook + UI addition (COMPLETE 2026-07-15):
 
 ## Execution State
 
-**Build Status**: RUNNING (Phase 3 complete → Phase 4 next)
-**Current Phase**: BUILD — Phase 3 of 4 COMPLETE
-**Current Step**: Phase 3 (webhook delivery + retry) done & verified (216/216 tests, tsc clean, committed). Next: Phase 4 (Automation-tab UI in frontend/).
-**Last Completed**: BUILD Phase 3 — HttpWebhookDispatcher (POST + retry lifecycle), env config, engine wiring; +13 tests
-**Can Resume**: YES
-**Phase 3 notes**: (1) byte-stable POST body held in an in-memory `payloads` map keyed by delivery id (row stores payload, but read projection omits it) — consistent with the frozen non-durable in-process mechanism; a future re-drive would need a payload-reading repo method. (2) unexpected-throw fail-safe logs `rules.webhook_dispatch_error`. Backend (Phases 1–3) COMPLETE; Phase 4 is frontend-only.
+**Build Status**: COMPLETE (all 4 phases)
+**Current Phase**: BUILD_COMPLETE — 4 of 4 phases done
+**Current Step**: Phase 4 (Automation-tab UI) done & verified (frontend 100/100, tsc --noEmit clean, vite build OK, committed). ALL PHASES COMPLETE.
+**Last Completed**: BUILD Phase 4 — Automation tab (route, mutation seam, RuleForm, optimistic toggle, ConfirmDialog, history + delivery badges); +65 frontend tests
+**Can Resume**: NO (build finished)
+**Totals**: backend 216/216 tests + frontend 100/100 tests all passing; backend tsc clean; frontend tsc --noEmit clean + vite build OK.
+**Next**: /banyan-reflect TASK-006, then /banyan-archive TASK-006.
+**Deferred / accepted (documented)**: SSRF = http(s)-only (accepted risk); webhook retry durability across process restart not built (re-drive provisioned via status index + findNonTerminalDeliveries); trigger_executions 'failed' status path not produced by the engine this build; DB-level CHECK/FK constraints exercised via app-level validation, not against a live DB in tests (repo tests stub pg).
 **Run parameters (user-decided 2026-07-15)**: autonomous run committing each phase; SSRF = http(s)-validation-only (accepted risk); WEBHOOK_MAX_ATTEMPTS = 3 total.
 **Phase 1 note (for Phase 2/3)**: WebhooksRepository method names as implemented — `recordExecution`, `createDelivery`, `updateDelivery`/`markDelivered`/`markFailed`/`markExhausted`, `listTriggerExecutions`, `listDeliveries`, `findDeliveryById`, `findNonTerminalDeliveries`. Engine/dispatcher must consume these exact names.
 **Run parameters (user-decided 2026-07-15)**: autonomous run committing each phase; SSRF = http(s)-validation-only (accepted risk); WEBHOOK_MAX_ATTEMPTS = 3 total.
