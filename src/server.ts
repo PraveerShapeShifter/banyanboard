@@ -7,6 +7,8 @@ import { PostgresCardsRepository } from './cards/cards.repository';
 import { PostgresActivityRepository } from './activity/activity.repository';
 import { InProcessActivityEmitter } from './activity/activity.emitter';
 import type { ActivityStreamConfig } from './activity/activity.routes';
+import { PostgresRulesRepository } from './rules/rules.repository';
+import { PostgresWebhooksRepository } from './webhooks/webhooks.repository';
 
 const env = loadEnv();
 const pool = createPool(env.databaseUrl);
@@ -21,6 +23,8 @@ const app = createApp({
   activityRepo: new PostgresActivityRepository(pool),
   activityEmitter: new InProcessActivityEmitter(),
   activityStreamConfig,
+  rulesRepo: new PostgresRulesRepository(pool),
+  webhooksRepo: new PostgresWebhooksRepository(pool),
 });
 
 app.listen(env.port, () => {

@@ -306,7 +306,7 @@ logger).
 > gated on the (complete) auto-move creative**; **Phase 3 is gated on the new webhook
 > creative** and **Phase 4 on the new UI/UX creative** (see Creative Phases).
 
-- [ ] **Phase 1 — Data model + CRUD API** (`automation_rules`, `trigger_executions`, `webhook_deliveries`) — AC-ENTRY-1, AC-HAPPY-1, AC-ERROR-2
+- [x] **Phase 1 — Data model + CRUD API** (`automation_rules`, `trigger_executions`, `webhook_deliveries`) — AC-ENTRY-1, AC-HAPPY-1, AC-ERROR-2 ✅ COMPLETE (2026-07-15): migrations 004/005 + src/rules/ + src/webhooks/ read routes; 181/181 tests pass, tsc clean
   - `db/init/004_automation_rules.sql`: `automation_rules` table (board-scoped FK `ON DELETE CASCADE`, normalized `condition_field/operator/value` CHECKs, `target_status` CHECK matching `cards.status`, `enabled` default true, **`webhook_url VARCHAR(2048) NULL`**, timestamps); + the `card_activity` `triggered_by`/`rule_id` ALTER (kept here since the table is created here)
   - `db/init/005_workflow_webhooks.sql`: **`trigger_executions`** table (rule/card/board, from/to status, `status ('executed'|'failed')`) and **`webhook_deliveries`** table (`trigger_execution_id` FK, `rule_id`, `url`, `status ('pending'|'delivered'|'failed'|'exhausted')` default `pending`, `attempts`, `last_status_code`, `last_error`, `payload`, timestamps + `delivered_at`)
   - `src/rules/`: `rules.types.ts`, `rules.validation.ts` (incl. `webhook_url` + self-loop checks), `rules.repository.ts` (`PostgresRulesRepository` + interface, incl. `findEnabledByBoard` ordered `id ASC`), `rules.routes.ts` (`createRulesRouter`, board_id in body, `?board_id=` filter, FK-existence check via `boardsRepo.findById`)
@@ -379,11 +379,13 @@ Webhook + UI addition (COMPLETE 2026-07-15):
 
 ## Execution State
 
-**Build Status**: IDLE (about to start Phase 1)
-**Current Phase**: CREATIVE → BUILD (all 5 creative sub-phases frozen)
-**Current Step**: Creative complete for all phases. Phase gate unblocked. Autonomous build of Phases 1→4 authorized (commit each phase; inter-phase human review waived per user).
-**Last Completed**: CREATIVE — webhook architecture + webhook retry algorithm + automation-tab UI/UX (3 docs), reconciled and frozen
-**Can Resume**: NO
+**Build Status**: RUNNING (Phase 1 complete → Phase 2 next)
+**Current Phase**: BUILD — Phase 1 of 4 COMPLETE
+**Current Step**: Phase 1 (Data model + CRUD API) done & verified (181/181 tests, tsc clean, committed). Next: Phase 2 (engine + PATCH integration + activity distinguishability).
+**Last Completed**: BUILD Phase 1 — migrations 004/005, src/rules/, src/webhooks/ read routes, app/server wiring; +63 tests
+**Can Resume**: YES
+**Run parameters (user-decided 2026-07-15)**: autonomous run committing each phase; SSRF = http(s)-validation-only (accepted risk); WEBHOOK_MAX_ATTEMPTS = 3 total.
+**Phase 1 note (for Phase 2/3)**: WebhooksRepository method names as implemented — `recordExecution`, `createDelivery`, `updateDelivery`/`markDelivered`/`markFailed`/`markExhausted`, `listTriggerExecutions`, `listDeliveries`, `findDeliveryById`, `findNonTerminalDeliveries`. Engine/dispatcher must consume these exact names.
 **Run parameters (user-decided 2026-07-15)**: autonomous run committing each phase; SSRF = http(s)-validation-only (accepted risk); WEBHOOK_MAX_ATTEMPTS = 3 total.
 
 ### Active Sub-Agents

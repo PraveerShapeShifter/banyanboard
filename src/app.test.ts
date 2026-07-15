@@ -6,6 +6,8 @@ import type { CardsRepository } from './cards/cards.repository';
 import type { ActivityRepository } from './activity/activity.repository';
 import type { ActivityEmitter } from './activity/activity.emitter';
 import type { ActivityStreamConfig } from './activity/activity.routes';
+import type { RulesRepository } from './rules/rules.repository';
+import type { WebhooksRepository } from './webhooks/webhooks.repository';
 
 /** Minimal stub — these tests never exercise the boards routes. */
 const stubBoardsRepo: BoardsRepository = {
@@ -59,6 +61,36 @@ const stubActivityEmitter: ActivityEmitter = {
  */
 const stubActivityStreamConfig: ActivityStreamConfig = { backfillLimit: 50, heartbeatMs: 15000 };
 
+/** Minimal stub — TASK-006 Phase 1 addition; these tests never exercise rule CRUD. */
+const stubRulesRepo: RulesRepository = {
+  create: async () => {
+    throw new Error('not used');
+  },
+  findByBoard: async () => [],
+  findById: async () => null,
+  update: async () => null,
+  delete: async () => false,
+  findEnabledByBoard: async () => [],
+};
+
+/** Minimal stub — TASK-006 Phase 1 addition; these tests never exercise the read routes' data. */
+const stubWebhooksRepo: WebhooksRepository = {
+  recordExecution: async () => {
+    throw new Error('not used');
+  },
+  createDelivery: async () => {
+    throw new Error('not used');
+  },
+  updateDelivery: async () => null,
+  markDelivered: async () => null,
+  markFailed: async () => null,
+  markExhausted: async () => null,
+  listTriggerExecutions: async () => [],
+  listDeliveries: async () => [],
+  findDeliveryById: async () => null,
+  findNonTerminalDeliveries: async () => [],
+};
+
 describe('app', () => {
   const app = createApp({
     checkDb: async () => true,
@@ -67,6 +99,8 @@ describe('app', () => {
     activityRepo: stubActivityRepo,
     activityEmitter: stubActivityEmitter,
     activityStreamConfig: stubActivityStreamConfig,
+    rulesRepo: stubRulesRepo,
+    webhooksRepo: stubWebhooksRepo,
   });
 
   it('responds to GET / with service info', async () => {
@@ -84,5 +118,23 @@ describe('app', () => {
     const res = await request(app).get('/activity/stream');
     expect(res.status).toBe(400);
     expect(res.body.error).toBeTruthy();
+  });
+
+  it('mounts the TASK-006 rules router: GET /rules is handled (200 array), not the generic 404', async () => {
+    const res = await request(app).get('/rules');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+  });
+
+  it('mounts the TASK-006 webhooks read router: GET /trigger-executions is handled (200 array)', async () => {
+    const res = await request(app).get('/trigger-executions');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+  });
+
+  it('mounts the TASK-006 webhooks read router: GET /webhook-deliveries is handled (200 array)', async () => {
+    const res = await request(app).get('/webhook-deliveries');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
   });
 });
